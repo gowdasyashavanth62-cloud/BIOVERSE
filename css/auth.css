@@ -1,0 +1,313 @@
+/* ═══════════════════════════════════════════════════════════════
+   BioVerse Design System — Authentication Pages
+   Split-panel layout with decorative gradient & floating shapes
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Auth Container (split layout) ────────────────────────────── */
+.auth-container {
+  display: flex;
+  min-height: 100vh;
+  background: var(--gray-50);
+}
+
+/* ── Decorative Left Panel ────────────────────────────────────── */
+.auth-panel {
+  position: relative;
+  width: 45%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12);
+  background: linear-gradient(145deg, var(--primary-900) 0%, var(--primary) 50%, var(--primary-600) 100%);
+  overflow: hidden;
+  color: #fff;
+}
+
+.auth-panel .auth-brand {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.auth-panel .auth-brand h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-extrabold);
+  color: #fff;
+  margin-bottom: var(--space-3);
+  letter-spacing: -0.02em;
+}
+
+.auth-panel .auth-brand p {
+  font-size: var(--text-lg);
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 340px;
+  line-height: var(--leading-relaxed);
+}
+
+.auth-panel .auth-brand .brand-emoji {
+  font-size: 3.5rem;
+  margin-bottom: var(--space-4);
+  display: block;
+}
+
+/* Floating decorative shapes */
+.auth-panel .shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.08;
+  background: #fff;
+}
+
+.auth-panel .shape-1 {
+  width: 300px;
+  height: 300px;
+  top: -80px;
+  right: -60px;
+  animation: float 8s ease-in-out infinite;
+}
+
+.auth-panel .shape-2 {
+  width: 200px;
+  height: 200px;
+  bottom: -40px;
+  left: -40px;
+  animation: float 6s ease-in-out infinite reverse;
+}
+
+.auth-panel .shape-3 {
+  width: 120px;
+  height: 120px;
+  top: 40%;
+  left: 10%;
+  animation: float 10s ease-in-out infinite;
+}
+
+.auth-panel .shape-4 {
+  width: 80px;
+  height: 80px;
+  bottom: 25%;
+  right: 15%;
+  opacity: 0.05;
+  animation: float 7s ease-in-out infinite reverse;
+}
+
+/* Hexagonal accents */
+.auth-panel .hex {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  opacity: 0.06;
+  border: 2px solid #fff;
+  border-radius: var(--radius-md);
+  transform: rotate(45deg);
+}
+
+.auth-panel .hex-1 {
+  top: 20%;
+  right: 20%;
+  animation: float 9s ease-in-out infinite;
+}
+
+.auth-panel .hex-2 {
+  bottom: 15%;
+  left: 25%;
+  width: 40px;
+  height: 40px;
+  animation: float 7s ease-in-out infinite reverse;
+}
+
+/* ── Form Panel (right side) ──────────────────────────────────── */
+.auth-form-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: var(--radius-xl);
+  padding: var(--space-10);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--gray-100);
+}
+
+.auth-title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--gray-900);
+  margin-bottom: var(--space-2);
+}
+
+.auth-subtitle {
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+  margin-bottom: var(--space-8);
+  line-height: var(--leading-relaxed);
+}
+
+/* Auth form specific inputs */
+.auth-card .form-group {
+  margin-bottom: var(--space-5);
+}
+
+.auth-card .form-input {
+  padding: 0.75rem 1rem;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+}
+
+.auth-card .btn-primary {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
+
+/* Remember me row */
+.auth-remember {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  font-size: var(--text-sm);
+}
+
+.auth-remember a {
+  color: var(--primary);
+  font-weight: var(--font-medium);
+}
+
+.auth-remember a:hover {
+  text-decoration: underline;
+}
+
+/* ── Divider ──────────────────────────────────────────────────── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-6) 0;
+  color: var(--gray-400);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--gray-200);
+}
+
+/* Social login buttons */
+.auth-social {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.auth-social .btn {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  color: var(--gray-700);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-md);
+}
+
+.auth-social .btn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.auth-social .btn img,
+.auth-social .btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.auth-footer {
+  text-align: center;
+  margin-top: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--gray-500);
+}
+
+.auth-footer a {
+  color: var(--primary);
+  font-weight: var(--font-semibold);
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .auth-panel {
+    width: 40%;
+    padding: var(--space-8);
+  }
+
+  .auth-panel .auth-brand h1 {
+    font-size: var(--text-3xl);
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-container {
+    flex-direction: column;
+  }
+
+  .auth-panel {
+    display: none;
+  }
+
+  .auth-form-container {
+    padding: var(--space-6);
+    min-height: 100vh;
+  }
+
+  .auth-card {
+    padding: var(--space-8);
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    max-width: 400px;
+  }
+
+  /* Show a small brand header on mobile */
+  .auth-mobile-brand {
+    display: block;
+    text-align: center;
+    margin-bottom: var(--space-8);
+  }
+
+  .auth-mobile-brand .brand-emoji {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-2);
+  }
+
+  .auth-mobile-brand h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    color: var(--primary);
+  }
+}
+
+@media (min-width: 769px) {
+  .auth-mobile-brand {
+    display: none;
+  }
+}
