@@ -4,16 +4,16 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { isPremium } from '../auth.js';
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
   window.navigateTo = navigateTo;
-  const allChapters = Store.getAllChapters();
+  const allChapters = await Store.getAllChapters();
   const selectedChapter = params.chapterId || '';
   const premium = isPremium();
-  let questions = Store.getQuestions(selectedChapter ? { chapterId: selectedChapter } : {});
+  let questions = await Store.getQuestions(selectedChapter ? { chapterId: selectedChapter } : {});
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -70,13 +70,13 @@ export function render(params) {
   const filterCategory = document.getElementById('filterCategory');
   const filterDifficulty = document.getElementById('filterDifficulty');
 
-  function applyFilters() {
+  async function applyFilters() {
     if (!premium) return;
     const filters = {};
     if (filterChapter.value) filters.chapterId = filterChapter.value;
     if (filterCategory.value) filters.category = filterCategory.value;
     if (filterDifficulty.value) filters.difficulty = filterDifficulty.value;
-    const filtered = Store.getQuestions(filters);
+    const filtered = await Store.getQuestions(filters);
     document.getElementById('questionList').innerHTML = renderQuestions(filtered);
     document.getElementById('filterSummary').textContent = `${filtered.length} questions found`;
     bindAnswerToggles();

@@ -6,13 +6,13 @@ import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 import { renderAchievementBadge, renderPremiumTierBadge } from '../components/badges.js';
 
-export function render() {
+export async function render() {
   const app = document.getElementById('app');
   const user = Store.getCurrentUser();
   if (!user) { navigateTo('/login'); return; }
   window.navigateTo = navigateTo;
 
-  const progress = Store.getProgress();
+  const progress = await Store.getProgress();
   const xp = user.xp || progress.xp || 0;
   const studyHours = user.studyHours || Math.round((progress.videosWatched?.length || 0) * 0.5) || 0;
   const streak = user.streak || progress.streak || 0;
@@ -28,8 +28,38 @@ export function render() {
     { id: 'xp_500', title: 'XP Master (500 XP)', icon: '<i data-lucide="star"></i>', date: xp >= 500 ? Date.now() : null }
   ];
 
+  const badgesList = [
+    { id: 'badge_chapter_master', title: 'Chapter Master', desc: 'Read notes and watch videos for a full chapter', icon: '📖' },
+    { id: 'badge_genetics_expert', title: 'Genetics Expert', desc: 'Score 90%+ on Genetics chapter test', icon: '🧬' },
+    { id: 'badge_plant_phys_pro', title: 'Plant Physiology Pro', desc: 'Complete all Plant Physiology chapters', icon: '🌿' },
+    { id: 'badge_human_phys_expert', title: 'Human Physiology Expert', desc: 'Complete all Human Physiology chapters', icon: '🫀' },
+    { id: 'badge_kcet_champion', title: 'KCET Champion', desc: 'Complete 5 KCET practice tests', icon: '🎯' },
+    { id: 'badge_neet_warrior', title: 'NEET Warrior', desc: 'Complete 5 NEET mock tests', icon: '🔥' }
+  ];
+
+  const userBadges = progress.badges || [];
+  const featuredBadge = progress.featuredBadge || '';
+
+  const badgesHtml = badgesList.map(b => {
+    const isUnlocked = userBadges.includes(b.id);
+    const isFeatured = featuredBadge === b.id;
+    return `
+      <div style="text-align:center; padding:12px; border:1px solid ${isUnlocked ? 'var(--primary-200)' : 'var(--gray-200)'}; border-radius:var(--radius-md); background:${isUnlocked ? 'var(--primary-50)' : 'var(--gray-50)'}; opacity:${isUnlocked ? 1 : 0.4};">
+        <div style="font-size:24px; margin-bottom:4px;">${b.icon}</div>
+        <div style="font-weight:bold; font-size:11px; color:var(--gray-800);">${b.title}</div>
+        <div style="font-size:9px; color:var(--gray-500); margin-top:2px; line-height:1.3;">${b.desc}</div>
+        ${isUnlocked 
+          ? `<button class="btn btn-ghost btn-sm set-featured-btn" data-id="${b.id}" style="padding:2px 8px; font-size:9px; margin-top:8px; height:auto; color:${isFeatured ? 'var(--accent-amber)' : 'var(--primary)'}; font-weight:bold; width:100%; border:1px solid var(--gray-200); background:white;">
+               ${isFeatured ? '★ Featured' : 'Set Featured'}
+             </button>`
+          : '<span style="font-size:9px; color:var(--gray-400); display:block; margin-top:8px;">Locked</span>'
+        }
+      </div>
+    `;
+  }).join('');
+
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -76,11 +106,20 @@ export function render() {
               </div>
             </div>
 
-            <!-- Achievements Card -->
+            <!-- Achievements Card & Collectible Badges Shelf -->
             <div class="card bg-surface">
               <h3><i data-lucide="award"></i> Achievements</h3>
               <div class="achievements-grid mt-sm" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:1rem;">
                 ${achievements.map(ach => renderAchievementBadge(ach.id, ach.title, ach.icon, ach.date)).join('')}
+              </div>
+            </div>
+
+            <!-- Collectible Badges Shelf -->
+            <div class="card bg-surface">
+              <h3><i data-lucide="trophy"></i> Collectible Badge Shelf</h3>
+              <p class="text-muted text-sm" style="margin-bottom:12px;">Earn badges by completing milestones. Set a featured badge to show on your forum posts!</p>
+              <div class="badges-shelf mt-sm" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:1rem;">
+                ${badgesHtml}
               </div>
             </div>
 
@@ -139,9 +178,17 @@ export function render() {
   initNavbar(); initSidebar();
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
-  document.getElementById('profileForm').addEventListener('submit', (e) => {
+  document.querySelectorAll('.set-featured-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      Store.setFeaturedBadge(btn.dataset.id);
+      showToast('Featured badge updated!', 'success');
+      await render();
+    });
+  });
+
+  document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    Store.updateProfile({
+    await Store.updateProfile({
       name: document.getElementById('profileName').value,
       phone: document.getElementById('profilePhone').value,
       class: document.getElementById('profileClass').value
@@ -149,21 +196,21 @@ export function render() {
     showToast('Profile updated!', 'success');
   });
 
-  document.getElementById('passwordForm').addEventListener('submit', (e) => {
+  document.getElementById('passwordForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const newPass = document.getElementById('newPass').value;
     if (newPass !== document.getElementById('confirmPass').value) {
       showToast('Passwords do not match', 'error');
       return;
     }
-    const result = Store.changePassword(document.getElementById('currentPass').value, newPass);
-    if (result.error) { showToast(result.error, 'error'); return; }
+    const result = await Store.changePassword(document.getElementById('currentPass').value, newPass);
+    if (result && result.error) { showToast(result.error, 'error'); return; }
     showToast('Password changed!', 'success');
     document.getElementById('passwordForm').reset();
   });
 
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    Store.logout();
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await Store.logout();
     navigateTo('/');
     showToast('Logged out', 'info');
   });

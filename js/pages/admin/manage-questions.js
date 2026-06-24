@@ -6,7 +6,7 @@ import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render() {
+export async function render() {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
@@ -19,14 +19,14 @@ export function render() {
   let parsedBulkQuestions = []; // stores parsed CSV rows
   let selectedBulkChapterId = '';
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const allChapters = Store.getAllChapters();
-    const questions = Store.getQuestions();
+  async function renderPage() {
+    const allChapters = await Store.getAllChapters();
+    const questions = await Store.getQuestions();
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -154,24 +154,24 @@ export function render() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     // Bind Tabs
-    document.getElementById('tabList')?.addEventListener('click', () => {
+    document.getElementById('tabList')?.addEventListener('click', async () => {
       activeTab = 'list';
-      renderPage();
+      await renderPage();
     });
-    document.getElementById('tabBulk')?.addEventListener('click', () => {
+    document.getElementById('tabBulk')?.addEventListener('click', async () => {
       activeTab = 'bulk';
-      renderPage();
+      await renderPage();
     });
 
     // Filters event
     ['fChapter', 'fCategory', 'fDifficulty'].forEach(id => {
-      document.getElementById(id)?.addEventListener('change', () => {
+      document.getElementById(id)?.addEventListener('change', async () => {
         applyFilters();
       });
     });
 
     // Bind Add Question
-    document.getElementById('addQuestionBtn')?.addEventListener('click', () => {
+    document.getElementById('addQuestionBtn')?.addEventListener('click', async () => {
       openQuestionModal(null);
     });
 
@@ -180,18 +180,18 @@ export function render() {
     const fileInput = document.getElementById('csvFileInput');
 
     if (dropZone && fileInput) {
-      dropZone.addEventListener('dragover', (e) => {
+      dropZone.addEventListener('dragover', async (e) => {
         e.preventDefault();
         dropZone.style.borderColor = 'var(--primary)';
         dropZone.style.background = 'var(--bg-hover)';
       });
 
-      dropZone.addEventListener('dragleave', () => {
+      dropZone.addEventListener('dragleave', async () => {
         dropZone.style.borderColor = 'var(--border-color)';
         dropZone.style.background = 'var(--bg-light)';
       });
 
-      dropZone.addEventListener('drop', (e) => {
+      dropZone.addEventListener('drop', async (e) => {
         e.preventDefault();
         dropZone.style.borderColor = 'var(--border-color)';
         dropZone.style.background = 'var(--bg-light)';
@@ -200,7 +200,7 @@ export function render() {
         }
       });
 
-      fileInput.addEventListener('change', (e) => {
+      fileInput.addEventListener('change', async (e) => {
         if (e.target.files.length > 0) {
           handleFile(e.target.files[0]);
         }
@@ -208,7 +208,7 @@ export function render() {
     }
 
     // Confirm Bulk Save
-    document.getElementById('btnConfirmBulk')?.addEventListener('click', () => {
+    document.getElementById('btnConfirmBulk')?.addEventListener('click', async () => {
       const chapterId = document.getElementById('bulkChapterSelect').value;
       if (!chapterId) {
         showToast('Please select a target chapter to import questions into.', 'error');
@@ -227,8 +227,8 @@ export function render() {
         return;
       }
 
-      validQuestions.forEach(q => {
-        Store.addQuestion({
+      validQuestions.forEach(async q => {
+        await Store.addQuestion({
           chapterId: chapterId,
           type: q.type || 'mcq',
           question: q.question,
@@ -242,18 +242,18 @@ export function render() {
       });
 
       showToast(`Successfully imported ${validQuestions.length} questions!`, 'success');
-      Store.logActivity('Bulk Question Import', `Imported ${validQuestions.length} questions into chapter: ${chapterId}`);
+      await Store.logActivity('Bulk Question Import', `Imported ${validQuestions.length} questions into chapter: ${chapterId}`);
       
       parsedBulkQuestions = [];
       activeTab = 'list';
-      renderPage();
+      await renderPage();
     });
 
     bindRowActions();
   }
 
-  function applyFilters() {
-    const allChapters = Store.getAllChapters();
+  async function applyFilters() {
+    const allChapters = await Store.getAllChapters();
     const filters = {};
     const ch = document.getElementById('fChapter')?.value;
     const cat = document.getElementById('fCategory')?.value;
@@ -263,7 +263,7 @@ export function render() {
     if (cat) filters.category = cat;
     if (dif) filters.difficulty = dif;
 
-    const filtered = Store.getQuestions(filters);
+    const filtered = await Store.getQuestions(filters);
     const body = document.getElementById('qTableBody');
     if (body) {
       body.innerHTML = renderRows(filtered, allChapters);
@@ -275,13 +275,13 @@ export function render() {
     bindRowActions();
   }
 
-  function bindRowActions() {
+  async function bindRowActions() {
     // Delete
     document.querySelectorAll('.delete-q').forEach(btn => {
       btn.addEventListener('click', async () => {
         const qid = btn.dataset.id;
         if (await confirmModal('Delete Question', 'Are you sure you want to delete this question?')) {
-          Store.deleteQuestion(qid);
+          await Store.deleteQuestion(qid);
           showToast('Question deleted successfully', 'success');
           applyFilters();
         }
@@ -290,9 +290,9 @@ export function render() {
 
     // Edit
     document.querySelectorAll('.edit-q').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const qid = btn.dataset.id;
-        const questions = Store.getQuestions();
+        const questions = await Store.getQuestions();
         const q = questions.find(item => item.id === qid);
         if (q) {
           openQuestionModal(q);
@@ -302,8 +302,8 @@ export function render() {
   }
 
   // Open Add/Edit Modal
-  function openQuestionModal(questionObj = null) {
-    const allChapters = Store.getAllChapters();
+  async function openQuestionModal(questionObj = null) {
+    const allChapters = await Store.getAllChapters();
     const isEdit = questionObj !== null;
     const qData = questionObj || {
       chapterId: '',
@@ -375,7 +375,7 @@ export function render() {
       `,
       actions: [
         { label: 'Cancel', class: 'btn btn-ghost', onClick: () => closeModal() },
-        { label: isEdit ? 'Save Changes' : 'Add Question', class: 'btn btn-primary', onClick: () => {
+        { label: isEdit ? 'Save Changes' : 'Add Question', class: 'btn btn-primary', onClick: async () => {
           saveQuestion(isEdit, qData.id);
         }}
       ]
@@ -386,12 +386,12 @@ export function render() {
 
     // Watch type change
     const typeSelect = document.getElementById('qType');
-    typeSelect?.addEventListener('change', () => {
+    typeSelect?.addEventListener('change', async () => {
       updateModalFields(typeSelect.value, null);
     });
   }
 
-  function updateModalFields(type, existingData = null) {
+  async function updateModalFields(type, existingData = null) {
     const container = document.getElementById('typeSpecificFields');
     if (!container) return;
 
@@ -480,7 +480,7 @@ export function render() {
     }
   }
 
-  function saveQuestion(isEdit, existingId = null) {
+  async function saveQuestion(isEdit, existingId = null) {
     const type = document.getElementById('qType').value;
     const chapterId = document.getElementById('qChapter').value;
     const correctAnswer = parseInt(document.getElementById('qCorrect').value);
@@ -565,19 +565,19 @@ export function render() {
     };
 
     if (isEdit) {
-      Store.updateQuestion(existingId, payload);
+      await Store.updateQuestion(existingId, payload);
       showToast('Question updated successfully!', 'success');
     } else {
-      Store.addQuestion(payload);
+      await Store.addQuestion(payload);
       showToast('Question created successfully!', 'success');
     }
 
     closeModal();
-    renderPage();
+    await renderPage();
   }
 
   // File parsing logic
-  function handleFile(file) {
+  async function handleFile(file) {
     if (!file.name.endsWith('.csv')) {
       showToast('Please select a valid CSV file.', 'error');
       return;
@@ -591,7 +591,7 @@ export function render() {
     reader.readAsText(file);
   }
 
-  function parseCSVData(text) {
+  async function parseCSVData(text) {
     const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
     if (lines.length < 2) {
       showToast('CSV file is empty or missing content', 'error');
@@ -667,7 +667,7 @@ export function render() {
     renderBulkPreview();
   }
 
-  function renderBulkPreview() {
+  async function renderBulkPreview() {
     const previewSection = document.getElementById('bulkPreviewSection');
     const previewBody = document.getElementById('bulkPreviewBody');
     const countSpan = document.getElementById('bulkCount');
@@ -703,7 +703,7 @@ export function render() {
   }
 }
 
-function renderRows(questions, chapters) {
+async function renderRows(questions, chapters) {
   if (questions.length === 0) {
     return '<tr><td colspan="7" class="text-center text-muted">No questions found in the bank.</td></tr>';
   }

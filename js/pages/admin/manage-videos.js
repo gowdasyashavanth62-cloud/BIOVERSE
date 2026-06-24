@@ -6,7 +6,7 @@ import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render(params) {
+export async function render(params) {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
@@ -20,12 +20,12 @@ export function render(params) {
   let selectedUnit = '';
   let selectedChapter = '';
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const videos = Store.getVideos() || [];
-    const syllabus = Store.getSyllabus() || [];
-    const chapters = Store.getAllChapters() || [];
+  async function renderPage() {
+    const videos = await Store.getVideos() || [];
+    const syllabus = await Store.getSyllabus() || [];
+    const chapters = await Store.getAllChapters() || [];
 
     // Ensure all videos have a mock views count for display
     videos.forEach(v => {
@@ -58,7 +58,7 @@ export function render(params) {
     const canDelete = isSuperAdmin() || isContentManager();
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -203,32 +203,32 @@ export function render(params) {
     setupActions();
   }
 
-  function setupFilters() {
+  async function setupFilters() {
     const searchInput = document.getElementById('searchVideo');
     const unitSelect = document.getElementById('filterUnit');
     const chapterSelect = document.getElementById('filterChapter');
 
-    searchInput?.addEventListener('input', (e) => {
+    searchInput?.addEventListener('input', async (e) => {
       searchQuery = e.target.value;
       debounce(() => renderPage(), 300)();
     });
 
-    unitSelect?.addEventListener('change', (e) => {
+    unitSelect?.addEventListener('change', async (e) => {
       selectedUnit = e.target.value;
       selectedChapter = ''; // Reset chapter when unit changes
-      renderPage();
+      await renderPage();
     });
 
-    chapterSelect?.addEventListener('change', (e) => {
+    chapterSelect?.addEventListener('change', async (e) => {
       selectedChapter = e.target.value;
-      renderPage();
+      await renderPage();
     });
   }
 
-  function setupActions() {
+  async function setupActions() {
     // Preview Click
     document.querySelectorAll('.preview-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         const ytid = btn.dataset.ytid;
         const title = btn.dataset.title;
         openVideoPreview(ytid, title);
@@ -236,13 +236,13 @@ export function render(params) {
     });
 
     // Add Video Click
-    document.getElementById('addVideoBtn')?.addEventListener('click', () => {
+    document.getElementById('addVideoBtn')?.addEventListener('click', async () => {
       openAddEditModal();
     });
 
     // Edit Video Click
     document.querySelectorAll('.edit-video-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const vidId = btn.dataset.id;
         openAddEditModal(vidId);
       });
@@ -252,21 +252,21 @@ export function render(params) {
     document.querySelectorAll('.delete-video-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const vidId = btn.dataset.id;
-        const videos = Store.getVideos();
+        const videos = await Store.getVideos();
         const v = videos.find(x => x.id === vidId);
         if (!v) return;
 
         const confirm = await confirmModal('Delete Video', `Are you sure you want to delete "${v.title}"?`);
         if (confirm) {
-          Store.deleteVideo(vidId);
+          await Store.deleteVideo(vidId);
           showToast('Video deleted successfully!', 'success');
-          renderPage();
+          await renderPage();
         }
       });
     });
   }
 
-  function openVideoPreview(youtubeId, title) {
+  async function openVideoPreview(youtubeId, title) {
     openModal({
       title: title,
       size: 'lg',
@@ -288,18 +288,18 @@ export function render(params) {
     });
   }
 
-  function openAddEditModal(videoId = null) {
+  async function openAddEditModal(videoId = null) {
     const isEdit = videoId !== null;
     let videoData = { title: '', description: '', youtubeUrl: '', duration: '', chapterId: '', conceptId: '' };
 
     if (isEdit) {
-      const videos = Store.getVideos();
+      const videos = await Store.getVideos();
       const existing = videos.find(v => v.id === videoId);
       if (existing) videoData = { ...existing };
     }
 
-    const syllabus = Store.getSyllabus();
-    const allChapters = Store.getAllChapters();
+    const syllabus = await Store.getSyllabus();
+    const allChapters = await Store.getAllChapters();
 
     // Figure out initial Unit ID if editing
     let initialUnitId = '';
@@ -372,7 +372,7 @@ export function render(params) {
     const mChapter = document.getElementById('mVideoChapter');
     const mConcept = document.getElementById('mVideoConcept');
 
-    mUnit?.addEventListener('change', (e) => {
+    mUnit?.addEventListener('change', async (e) => {
       const uId = e.target.value;
       if (!uId) {
         mChapter.innerHTML = '<option value="">Select Chapter</option>';
@@ -391,7 +391,7 @@ export function render(params) {
       mConcept.disabled = true;
     });
 
-    mChapter?.addEventListener('change', (e) => {
+    mChapter?.addEventListener('change', async (e) => {
       const chId = e.target.value;
       if (!chId) {
         mConcept.innerHTML = '<option value="">Select Concept (Optional)</option>';
@@ -399,14 +399,14 @@ export function render(params) {
         return;
       }
 
-      const concepts = Store.getConcepts(chId);
+      const concepts = await Store.getConcepts(chId);
       mConcept.innerHTML = '<option value="">Select Concept (Optional)</option>' + 
         concepts.map(co => `<option value="${co.id}">${co.title}</option>`).join('');
       mConcept.disabled = false;
     });
   }
 
-  function handleSave(videoId = null) {
+  async function handleSave(videoId = null) {
     const title = document.getElementById('mVideoTitle')?.value.trim();
     const duration = document.getElementById('mVideoDuration')?.value.trim();
     const description = document.getElementById('mVideoDesc')?.value.trim();
@@ -429,20 +429,20 @@ export function render(params) {
     };
 
     if (videoId) {
-      Store.updateVideo(videoId, payload);
+      await Store.updateVideo(videoId, payload);
       showToast('Video updated successfully!', 'success');
     } else {
-      Store.addVideo(payload);
+      await Store.addVideo(payload);
       showToast('Video added to library!', 'success');
     }
 
     closeModal();
-    renderPage();
+    await renderPage();
   }
 
   // Simple debounce helper
   let timeout;
-  function debounce(func, delay) {
+  async function debounce(func, delay) {
     return function() {
       const context = this;
       const args = arguments;

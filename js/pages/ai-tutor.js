@@ -4,22 +4,22 @@ import { Store } from '../store.js';
 import { navigateTo } from '../router.js';
 import { showToast } from '../components/toast.js';
 
-export function render() {
+export async function render() {
   const app = document.getElementById('app');
   const user = Store.getCurrentUser();
   if (!user) { navigateTo('/login'); return; }
 
   window.navigateTo = navigateTo;
   
-  let chatHistory = Store.getAiChats();
+  let chatHistory = await Store.getAiChats();
   let currentLanguage = 'en';
   let isTTSActive = false;
 
   // Predefined biology concepts to choose from for quick actions
-  const allChapters = Store.getAllChapters() || [];
+  const allChapters = await Store.getAllChapters() || [];
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content flex-column" style="height: calc(100vh - 70px); overflow:hidden; padding: 1.5rem;">
@@ -259,15 +259,15 @@ export function render() {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const typ = document.getElementById('aiTyping');
       if (typ) typ.remove();
 
       // Resolve question
-      const answer = Store.askBiologyTutor(q, {}, currentLanguage);
+      const answer = await Store.askBiologyTutor(q, {}, currentLanguage);
       
       // Save
-      Store.saveAiChat(q, answer);
+      await Store.saveAiChat(q, answer);
       
       appendMessage('tutor', answer);
 
@@ -280,7 +280,7 @@ export function render() {
       }
 
       // Update history list
-      chatHistory = Store.getAiChats();
+      chatHistory = await Store.getAiChats();
       renderHistoryList();
     }, 600);
   }

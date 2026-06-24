@@ -4,12 +4,13 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 
-export function render(params) {
+export async function render(params) {
   const user = Store.getCurrentUser();
   if (!user) { navigateTo('/login'); return; }
   window.navigateTo = navigateTo;
 
-  const cert = Store.getCertificates().find(c => c.id === params.certId);
+  const certs = await Store.getCertificatesForUser(user.id) || [];
+  const cert = certs.find(c => c.id === params.certId);
   if (!cert) {
     navigateTo('/certificates');
     return;
@@ -19,7 +20,7 @@ export function render(params) {
   const app = document.getElementById('app');
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">

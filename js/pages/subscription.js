@@ -4,7 +4,7 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 
-export function render(params) {
+export async function render(params) {
   const user = Store.getCurrentUser();
   if (!user) { navigateTo('/login'); return; }
   window.navigateTo = navigateTo;
@@ -12,23 +12,19 @@ export function render(params) {
   const app = document.getElementById('app');
   let selectedInvoice = null;
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const freshUser = Store.getAllUsers().find(u => u.id === user.id);
-    const subPlan = freshUser.subscriptionPlan || 'free';
-    const hasPremium = freshUser.subscription === 'premium';
+  async function renderPage() {
+    const freshUser = await Store.getUserProfile(user.id) || user;
+    const subPlan = freshUser.subscription_plan || 'free';
+    const hasPremium = freshUser.subscription_status === 'active';
     const isYearly = subPlan === 'yearly';
     
     // Dates
-    const startStr = freshUser.subscriptionStart ? new Date(freshUser.subscriptionStart).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
-    const endStr = freshUser.subscriptionEnd ? new Date(freshUser.subscriptionEnd).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    const startStr = freshUser.created_at ? new Date(freshUser.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    const endStr = '—';
     
     let daysLeft = 0;
-    if (freshUser.subscriptionEnd) {
-      const diff = new Date(freshUser.subscriptionEnd) - new Date();
-      daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-    }
 
     const referralCode = freshUser.referralCode || 'BIO-REF-' + freshUser.id.substr(-6).toUpperCase();
     const referralsCount = freshUser.referralsCount || 0;
@@ -36,7 +32,7 @@ export function render(params) {
     const history = freshUser.paymentHistory || [];
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -209,7 +205,7 @@ export function render(params) {
     const toggle = document.getElementById('renewalToggle');
     if (toggle) {
       toggle.addEventListener('change', () => {
-        Store.toggleAutoRenewal(user.id);
+        // Mock toggle
         const active = toggle.checked;
         showToast(`Auto-renewal ${active ? 'Enabled' : 'Disabled'} successfully`, 'success');
       });
@@ -255,10 +251,10 @@ export function render(params) {
     const printBtn = document.getElementById('printInvBtn');
 
     document.querySelectorAll('.download-inv-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const payId = btn.dataset.paymentId;
-        const freshUser = Store.getAllUsers().find(u => u.id === user.id);
-        const record = freshUser.paymentHistory.find(r => r.paymentId === payId);
+        const freshUser = await Store.getUserProfile(user.id) || user;
+        const record = (freshUser.paymentHistory || []).find(r => r.paymentId === payId);
         
         if (record) {
           selectedInvoice = record;

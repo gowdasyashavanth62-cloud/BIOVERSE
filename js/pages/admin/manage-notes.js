@@ -6,7 +6,7 @@ import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render(params) {
+export async function render(params) {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
@@ -21,12 +21,12 @@ export function render(params) {
   let selectedChapter = '';
   let selectedType = '';
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const notes = Store.getNotes() || [];
-    const syllabus = Store.getSyllabus() || [];
-    const chapters = Store.getAllChapters() || [];
+  async function renderPage() {
+    const notes = await Store.getNotes() || [];
+    const syllabus = await Store.getSyllabus() || [];
+    const chapters = await Store.getAllChapters() || [];
 
     // Filter notes
     const filteredNotes = notes.filter(n => {
@@ -58,7 +58,7 @@ export function render(params) {
     const canDelete = isSuperAdmin() || isContentManager();
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -212,43 +212,43 @@ export function render(params) {
     setupActions();
   }
 
-  function setupFilters() {
+  async function setupFilters() {
     const searchInput = document.getElementById('searchNotes');
     const unitSelect = document.getElementById('filterUnit');
     const chapterSelect = document.getElementById('filterChapter');
     const typeSelect = document.getElementById('filterType');
 
-    searchInput?.addEventListener('input', (e) => {
+    searchInput?.addEventListener('input', async (e) => {
       searchQuery = e.target.value;
       debounce(() => renderPage(), 300)();
     });
 
-    unitSelect?.addEventListener('change', (e) => {
+    unitSelect?.addEventListener('change', async (e) => {
       selectedUnit = e.target.value;
       selectedChapter = '';
-      renderPage();
+      await renderPage();
     });
 
-    chapterSelect?.addEventListener('change', (e) => {
+    chapterSelect?.addEventListener('change', async (e) => {
       selectedChapter = e.target.value;
-      renderPage();
+      await renderPage();
     });
 
-    typeSelect?.addEventListener('change', (e) => {
+    typeSelect?.addEventListener('change', async (e) => {
       selectedType = e.target.value;
-      renderPage();
+      await renderPage();
     });
   }
 
-  function setupActions() {
+  async function setupActions() {
     // Add Note Click
-    document.getElementById('addNoteBtn')?.addEventListener('click', () => {
+    document.getElementById('addNoteBtn')?.addEventListener('click', async () => {
       openAddEditModal();
     });
 
     // Edit Note Click
     document.querySelectorAll('.edit-note-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         openAddEditModal(btn.dataset.id);
       });
     });
@@ -257,31 +257,31 @@ export function render(params) {
     document.querySelectorAll('.delete-note-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const noteId = btn.dataset.id;
-        const notes = Store.getNotes();
+        const notes = await Store.getNotes();
         const n = notes.find(x => x.id === noteId);
         if (!n) return;
 
         const confirm = await confirmModal('Delete Note', `Are you sure you want to delete "${n.title}"?`);
         if (confirm) {
-          Store.deleteNote(noteId);
+          await Store.deleteNote(noteId);
           showToast('Note deleted successfully!', 'success');
-          renderPage();
+          await renderPage();
         }
       });
     });
   }
 
-  function openAddEditModal(noteId = null) {
+  async function openAddEditModal(noteId = null) {
     const isEdit = noteId !== null;
     let noteData = { title: '', description: '', chapterId: '', conceptId: '', type: 'detailed', content: '', pdfUrl: '' };
 
     if (isEdit) {
-      const existing = Store.getNote(noteId);
+      const existing = await Store.getNote(noteId);
       if (existing) noteData = { ...existing };
     }
 
-    const syllabus = Store.getSyllabus();
-    const allChapters = Store.getAllChapters();
+    const syllabus = await Store.getSyllabus();
+    const allChapters = await Store.getAllChapters();
 
     let initialUnitId = '';
     if (noteData.chapterId) {
@@ -372,7 +372,7 @@ export function render(params) {
     const mPdfUrl = document.getElementById('mNotePdfUrl');
     const mMockBtn = document.getElementById('mNoteMockUploadBtn');
 
-    mMockBtn?.addEventListener('click', () => {
+    mMockBtn?.addEventListener('click', async () => {
       // Simulate file upload and return a mock URL
       const titleVal = document.getElementById('mNoteTitle')?.value.trim() || 'note';
       const cleanTitle = titleVal.toLowerCase().replace(/[^a-z0-9]/g, '-');
@@ -381,7 +381,7 @@ export function render(params) {
       showToast('Mock PDF uploaded successfully!', 'success');
     });
 
-    mUnit?.addEventListener('change', (e) => {
+    mUnit?.addEventListener('change', async (e) => {
       const uId = e.target.value;
       if (!uId) {
         mChapter.innerHTML = '<option value="">Select Chapter</option>';
@@ -400,7 +400,7 @@ export function render(params) {
       mConcept.disabled = true;
     });
 
-    mChapter?.addEventListener('change', (e) => {
+    mChapter?.addEventListener('change', async (e) => {
       const chId = e.target.value;
       if (!chId) {
         mConcept.innerHTML = '<option value="">Select Concept (Optional)</option>';
@@ -408,14 +408,14 @@ export function render(params) {
         return;
       }
 
-      const concepts = Store.getConcepts(chId);
+      const concepts = await Store.getConcepts(chId);
       mConcept.innerHTML = '<option value="">Select Concept (Optional)</option>' + 
         concepts.map(co => `<option value="${co.id}">${co.title}</option>`).join('');
       mConcept.disabled = false;
     });
   }
 
-  function handleSave(noteId = null) {
+  async function handleSave(noteId = null) {
     const title = document.getElementById('mNoteTitle')?.value.trim();
     const type = document.getElementById('mNoteType')?.value;
     const description = document.getElementById('mNoteDesc')?.value.trim();
@@ -440,20 +440,20 @@ export function render(params) {
     };
 
     if (noteId) {
-      Store.updateNote(noteId, payload);
+      await Store.updateNote(noteId, payload);
       showToast('Notes updated successfully!', 'success');
     } else {
-      Store.addNote(payload);
+      await Store.addNote(payload);
       showToast('Smart Notes created successfully!', 'success');
     }
 
     closeModal();
-    renderPage();
+    await renderPage();
   }
 
   // Simple debounce helper
   let timeout;
-  function debounce(func, delay) {
+  async function debounce(func, delay) {
     return function() {
       const context = this;
       const args = arguments;

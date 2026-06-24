@@ -32,13 +32,13 @@ function esc(str) {
 /**
  * Render the navbar HTML.
  * Automatically picks public vs authenticated layout based on auth state.
- * @returns {string} HTML string
+ * @returns {Promise<string>} HTML string
  */
-export function Navbar() {
+export async function Navbar() {
   const user = Store.getCurrentUser();
 
   if (user) {
-    return _authenticatedNavbar(user);
+    return await _authenticatedNavbar(user);
   }
   return _publicNavbar();
 }
@@ -60,13 +60,13 @@ function _publicNavbar() {
         <i data-lucide="menu"></i>
       </button>
 
-      <!-- Nav links + auth buttons -->
-      <div class="navbar-menu" id="navbar-menu">
-        <div class="navbar-links">
-          <a class="navbar-link" href="#/" data-action="nav" data-nav="/">Home</a>
-          <a class="navbar-link" href="#/pricing" data-action="nav" data-nav="/pricing">Pricing</a>
+      <!-- Nav Links -->
+      <div class="navbar-menu" id="publicMenu">
+        <div class="navbar-start">
+          <a class="navbar-item" href="#/" data-action="nav" data-nav="/">Home</a>
+          <a class="navbar-item" href="#/pricing" data-action="nav" data-nav="/pricing">Pricing &amp; Plans</a>
         </div>
-        <div class="navbar-auth-buttons">
+        <div class="navbar-end">
           <button class="btn btn-ghost" data-action="nav" data-nav="/login">Log In</button>
           <button class="btn btn-primary" data-action="nav" data-nav="/signup">Sign Up</button>
         </div>
@@ -75,7 +75,7 @@ function _publicNavbar() {
   </nav>`;
 }
 
-function _authenticatedNavbar(user) {
+async function _authenticatedNavbar(user) {
   const initials = esc(getUserInitials(user.name));
   const avatarColor = getAvatarColor(user.name);
   const adminLink = isAdmin()
@@ -83,6 +83,21 @@ function _authenticatedNavbar(user) {
          <i data-lucide="shield"></i> Admin
        </a>`
     : '';
+
+  const progress = await Store.getProgress(user.id);
+  const lvlInfo = Store.getLevelInfo(progress.xp);
+  const notifs = await Store.getNotifications();
+  const unreadCount = notifs.filter(n => !n.read).length;
+
+  const notifItems = notifs.length === 0
+    ? `<div style="text-align:center;padding:12px;color:var(--gray-400);font-size:12px;">No notifications yet.</div>`
+    : notifs.map(n => `
+        <div class="notif-item ${n.read ? 'read' : 'unread'}" style="padding:8px;border-radius:var(--radius-sm);background:${n.read ? 'transparent' : 'var(--primary-50)'};border-bottom:1px solid var(--gray-100);margin-bottom:4px;">
+          <div style="font-weight:600;font-size:11px;color:var(--gray-800);">${esc(n.title)}</div>
+          <div style="font-size:10px;color:var(--gray-500);margin:2px 0;">${esc(n.message)}</div>
+          <div style="font-size:8px;color:var(--gray-400);text-align:right;">${new Date(n.time || n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        </div>
+      `).join('');
 
   return `
   <nav class="navbar navbar-auth" role="navigation" aria-label="Main navigation">
@@ -98,15 +113,34 @@ function _authenticatedNavbar(user) {
 
       <!-- Right actions -->
       <div class="navbar-actions">
+        <!-- Level Badge -->
+        <span class="nav-level-badge" style="background:var(--primary);color:white;padding:4px 10px;border-radius:16px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px;font-family:var(--font-display);">
+          <i data-lucide="award" style="width:12px;height:12px;"></i> Lvl ${lvlInfo.level}
+        </span>
+
         <!-- Search (visual only) -->
         <button class="navbar-icon-btn" aria-label="Search" data-action="search">
           <i data-lucide="search"></i>
         </button>
 
         <!-- Notifications -->
-        <button class="navbar-icon-btn" aria-label="Notifications" data-action="notifications">
-          <i data-lucide="bell"></i>
-        </button>
+        <div class="navbar-notifications-wrapper" style="position:relative;">
+          <button class="navbar-icon-btn" aria-label="Notifications" data-action="toggle-notif" style="position:relative;">
+            <i data-lucide="bell"></i>
+            ${unreadCount > 0 ? `<span class="notif-badge-dot" style="position:absolute;top:4px;right:4px;width:8px;height:8px;background:var(--accent-red);border-radius:50%;"></span>` : ''}
+          </button>
+          
+          <div class="navbar-dropdown notif-dropdown" id="navbar-notif-dropdown" style="display:none;position:absolute;top:100%;right:0;width:320px;background:white;box-shadow:var(--shadow-lg);border-radius:var(--radius-md);border:1px solid var(--gray-200);z-index:1000;padding:12px;margin-top:8px;">
+            <div style="padding:0 0 8px 0;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:bold;font-family:var(--font-display);font-size:13px;">Notifications</span>
+              <button class="btn btn-ghost btn-sm" data-action="mark-read-all" style="padding:2px 6px;font-size:10px;height:auto;">Mark read</button>
+            </div>
+            <div class="dropdown-divider" style="margin:4px 0 8px 0;"></div>
+            <div class="notif-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
+              ${notifItems}
+            </div>
+          </div>
+        </div>
 
         <!-- Avatar + dropdown -->
         <div class="navbar-avatar-wrapper" data-action="toggle-avatar-dropdown">
@@ -193,6 +227,29 @@ export function initNavbar() {
       return;
     }
 
+    // Notification dropdown toggle
+    if (action === 'toggle-notif') {
+      e.preventDefault();
+      e.stopPropagation();
+      _toggleNotifDropdown();
+      return;
+    }
+
+    // Mark all notifications read
+    if (action === 'mark-read-all') {
+      e.preventDefault();
+      Store.markNotificationsRead();
+      const dot = document.querySelector('.notif-badge-dot');
+      if (dot) dot.remove();
+      const items = document.querySelectorAll('.notif-item');
+      items.forEach(item => {
+        item.style.background = 'transparent';
+        item.classList.remove('unread');
+        item.classList.add('read');
+      });
+      return;
+    }
+
     // Logout
     if (action === 'logout') {
       e.preventDefault();
@@ -233,6 +290,7 @@ function _toggleDropdown() {
   if (!dd) return;
   const isOpen = dd.classList.toggle('dropdown-open');
   if (btn) btn.setAttribute('aria-expanded', String(isOpen));
+  _closeNotifDropdown(); // Close notifs if avatar is opened
 }
 
 function _closeDropdown() {
@@ -242,16 +300,34 @@ function _closeDropdown() {
   if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
+function _toggleNotifDropdown() {
+  const nd = document.getElementById('navbar-notif-dropdown');
+  if (!nd) return;
+  const isHidden = nd.style.display === 'none';
+  nd.style.display = isHidden ? 'block' : 'none';
+  _closeDropdown(); // Close avatar menu if notifs are opened
+}
+
+function _closeNotifDropdown() {
+  const nd = document.getElementById('navbar-notif-dropdown');
+  if (nd) nd.style.display = 'none';
+}
+
 function _handleOutsideClick(e) {
   const wrapper = document.querySelector('.navbar-avatar-wrapper');
   if (wrapper && !wrapper.contains(e.target)) {
     _closeDropdown();
+  }
+  const notifWrapper = document.querySelector('.navbar-notifications-wrapper');
+  if (notifWrapper && !notifWrapper.contains(e.target)) {
+    _closeNotifDropdown();
   }
 }
 
 function _handleEscapeKey(e) {
   if (e.key === 'Escape') {
     _closeDropdown();
+    _closeNotifDropdown();
     _closeMobileMenu();
   }
 }

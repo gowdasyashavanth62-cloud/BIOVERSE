@@ -6,7 +6,7 @@ import { showToast } from '../components/toast.js';
 import { confirmModal } from '../components/modal.js';
 import { isPremium } from '../auth.js';
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
   if (!isPremium()) {
     setTimeout(() => {
@@ -16,7 +16,7 @@ export function render(params) {
     return;
   }
   
-  const test = Store.getTest(params.testId);
+  const test = await Store.getTest(params.testId);
   if (!test || !test.questions || test.questions.length === 0) {
     navigateTo('/tests');
     return;
@@ -86,10 +86,10 @@ export function render(params) {
     });
   }
 
-  function submitTest() {
+  async function submitTest() {
     clearInterval(timerInterval);
     const timeTaken = (test.duration || 30) * 60 - timerSeconds;
-    const result = Store.submitTest(params.testId, answers, timeTaken);
+    const result = await Store.submitTest(params.testId, answers, timeTaken);
     if (result) {
       showToast('Test submitted!', 'success');
       navigateTo('/test-result/' + result.id);
@@ -97,7 +97,7 @@ export function render(params) {
   }
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content test-interface">
@@ -170,7 +170,7 @@ export function render(params) {
     const unanswered = test.questions.filter(q => answers[q.id] === undefined).length;
     const msg = unanswered > 0 ? `You have ${unanswered} unanswered question(s). Submit anyway?` : 'Are you sure you want to submit?';
     const confirmed = await confirmModal('Submit Test', msg);
-    if (confirmed) submitTest();
+    if (confirmed) await submitTest();
   });
 
   return () => { clearInterval(timerInterval); };

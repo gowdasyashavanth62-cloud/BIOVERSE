@@ -6,20 +6,20 @@ import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render() {
+export async function render() {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
   }
   const app = document.getElementById('app');
   window.navigateTo = navigateTo;
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const tests = Store.getTests();
+  async function renderPage() {
+    const tests = await Store.getTests();
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -82,7 +82,7 @@ export function render() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     // Bind Create Test Action
-    document.getElementById('createTestBtn')?.addEventListener('click', () => {
+    document.getElementById('createTestBtn')?.addEventListener('click', async () => {
       openTestBuilderModal();
     });
 
@@ -91,15 +91,15 @@ export function render() {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
         if (await confirmModal('Delete Test', 'Are you sure you want to delete this test?')) {
-          Store.deleteTest(id);
+          await Store.deleteTest(id);
           showToast('Test deleted successfully', 'success');
-          renderPage();
+          await renderPage();
         }
       });
     });
   }
 
-  function openTestBuilderModal() {
+  async function openTestBuilderModal() {
     openModal({
       title: 'Automated Test Builder',
       size: 'lg',
@@ -176,13 +176,13 @@ export function render() {
   }
 
   // Handle dependent dropdown updates inside modal
-  function updateModalDropdowns() {
+  async function updateModalDropdowns() {
     const type = document.getElementById('testType')?.value || 'chapter';
     const classId = document.getElementById('testClass')?.value || 'pu1';
     const unitGroup = document.getElementById('unitFilterGroup');
     const chapterGroup = document.getElementById('chapterFilterGroup');
 
-    const syllabus = Store.getSyllabus();
+    const syllabus = await Store.getSyllabus();
 
     if (type === 'mock') {
       if (unitGroup) unitGroup.style.display = 'none';
@@ -225,13 +225,13 @@ export function render() {
   }
 
   // Event Delegation for dropdown changes inside Modal
-  document.addEventListener('change', (e) => {
+  document.addEventListener('change', async (e) => {
     if (['testType', 'testClass', 'testUnit'].includes(e.target.id)) {
       updateModalDropdowns();
     }
   });
 
-  function generateTestSubmit() {
+  async function generateTestSubmit() {
     const title = document.getElementById('testTitle').value.trim();
     const type = document.getElementById('testType').value;
     const classId = document.getElementById('testClass').value;
@@ -248,7 +248,7 @@ export function render() {
     }
 
     // Step 1: Fetch all questions
-    let pool = Store.getQuestions();
+    let pool = await Store.getQuestions();
 
     // Step 2: Apply Difficulty filter
     if (difficulty !== 'any') {
@@ -256,7 +256,7 @@ export function render() {
     }
 
     // Step 3: Filter based on exam type hierarchy
-    const syllabus = Store.getSyllabus();
+    const syllabus = await Store.getSyllabus();
     if (type === 'chapter') {
       if (!chapterId) {
         showToast('Please select a target chapter.', 'error');
@@ -297,7 +297,7 @@ export function render() {
     }
 
     // Step 6: Save Test object
-    Store.addTest({
+    await Store.addTest({
       title,
       type,
       classId,
@@ -311,6 +311,6 @@ export function render() {
 
     closeModal();
     showToast(`Test "${title}" generated successfully with ${selected.length} questions!`, 'success');
-    renderPage();
+    await renderPage();
   }
 }

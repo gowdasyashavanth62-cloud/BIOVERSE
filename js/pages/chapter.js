@@ -10,23 +10,31 @@ let ytPlayer;
 let currentVideoId = null;
 let saveInterval = null;
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
-  const chapter = Store.getChapter(params.chapterId);
+  const chapter = await Store.getChapter(params.chapterId);
   if (!chapter) { navigateTo('/dashboard'); return; }
   Store.incrementChapterView(params.chapterId);
 
-  const concepts = Store.getConcepts(params.chapterId);
-  const videos = Store.getVideosByChapter(params.chapterId);
-  const notes = Store.getNotes(params.chapterId);
-  const questions = Store.getQuestions({ chapterId: params.chapterId });
+  const concepts = await Store.getConcepts(params.chapterId);
+  const videos = await Store.getVideosByChapter(params.chapterId);
+  const notes = await Store.getNotes(params.chapterId);
+  const questions = await Store.getQuestions({ chapterId: params.chapterId });
   const kcetQ = questions.filter(q => q.category === 'kcet');
   const neetQ = questions.filter(q => q.category === 'neet');
   const puQ = questions.filter(q => q.category === 'pu');
   const pyqs = questions.filter(q => q.year);
-  const tests = Store.getTests({ chapterId: params.chapterId });
-  const cp = Store.getChapterProgress(params.chapterId);
-  const progress = Store.getProgress();
+  const tests = await Store.getTests({ chapterId: params.chapterId });
+  const cp = await Store.getChapterProgress(params.chapterId);
+  const progress = await Store.getProgress();
+
+  // Pre-load all concept mastery data concurrently
+  const conceptMasteryMap = {};
+  await Promise.all(
+    (concepts || []).map(async (c) => {
+      conceptMasteryMap[c.id] = await Store.getConceptMastery(c.id);
+    })
+  );
 
   window.navigateTo = navigateTo;
   window.openVideo = openVideo;
@@ -40,7 +48,7 @@ export function render(params) {
   const classLabel = chapter.classId === 'pu1' ? '1st PU' : '2nd PU';
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -89,6 +97,9 @@ export function render(params) {
           </button>
           <button class="tab-item" data-tab="tests">
             <i data-lucide="clipboard-list"></i> Tests <span class="tab-count">${tests.length}</span>
+          </button>
+          <button class="tab-item" data-tab="discussion">
+            <i data-lucide="message-square"></i> Discussion
           </button>
         </div>
 
@@ -144,7 +155,7 @@ export function render(params) {
             ` : `
               <div class="concepts-list">
                 ${concepts.map((c, i) => {
-                  const mastery = Store.getConceptMastery(c.id);
+                  const mastery = conceptMasteryMap[c.id] || { score: 0, level: 'Beginner' };
                   const badgeClass = mastery.score > 75 ? 'badge-success' : mastery.score > 50 ? 'badge-primary' : mastery.score > 25 ? 'badge-warning' : 'badge-info';
                   return `
                     <div class="concept-item card hover-lift flex-row justify-between align-center" onclick="navigateTo('/concept/${c.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem;">
@@ -244,6 +255,22 @@ export function render(params) {
               </div>
             `}
           </div>
+
+          <!-- DISCUSSION TAB -->
+          <div class="tab-panel" id="panel-discussion">
+            <div class="card" style="margin-bottom:20px; padding:20px;">
+              <h3 style="margin-bottom:12px;font-family:var(--font-display);color:var(--primary-900);font-size:15px;">Ask a Doubt or Discuss</h3>
+              <form id="chapter-post-form">
+                <input type="text" id="chapter-post-title" placeholder="Summary of your doubt/discussion point..." class="form-input" style="margin-bottom:10px;height:40px;font-size:13px;" required>
+                <textarea id="chapter-post-content" placeholder="Provide details, describe the problem, or share your memory tricks..." class="form-input" style="min-height:100px;margin-bottom:12px;padding:10px;font-size:13px;" required></textarea>
+                <button type="submit" class="btn btn-primary">Post to Chapter Forum</button>
+              </form>
+            </div>
+            
+            <div id="chapter-posts-feed">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
         </div>
 
         <!-- Smart Video Modal -->
@@ -334,10 +361,10 @@ export function render(params) {
   });
 
   // Mark Watched
-  document.getElementById('markWatchedBtn').addEventListener('click', () => {
+  document.getElementById('markWatchedBtn').addEventListener('click', async () => {
     if (currentVideoId) {
-      Store.markVideoWatched(currentVideoId);
-      Store.addXP(50);
+      await Store.markVideoWatched(currentVideoId);
+      await Store.addXP(50);
       showToast('Video marked as watched! +50 XP', 'success');
     }
   });
@@ -373,6 +400,65 @@ export function render(params) {
       ytPlayer.seekTo(seconds, true);
     }
   };
+
+  // Chapter specific discussion board
+  async function renderChapterDiscussion() {
+    const feed = document.getElementById('chapter-posts-feed');
+    if (!feed) return;
+    const posts = await Store.getChapterPosts(chapterId);
+    if (posts.length === 0) {
+      feed.innerHTML = `<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:12px;">No discussions for this chapter yet. Ask a question to get started!</div>`;
+      return;
+    }
+    feed.innerHTML = posts.map(post => `
+      <div class="post-card" style="padding:12px; margin-bottom:12px; font-size:12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:var(--radius-md);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:10px; color:var(--gray-500);">
+          <span style="font-weight:600;">${post.authorName}</span>
+          <span>${new Date(post.date).toLocaleDateString()}</span>
+        </div>
+        <h4 style="font-weight:bold; color:var(--gray-900); margin-bottom:4px;">${post.title}</h4>
+        <p style="color:var(--gray-700); line-height:1.4; margin-bottom:8px;">${post.content}</p>
+        <div style="display:flex; gap:12px; font-size:10px; align-items:center;">
+          <button class="btn btn-ghost btn-sm ch-upvote-btn" data-id="${post.id}" style="padding:2px 6px; font-size:10px; height:auto; gap:3px;">
+            <i data-lucide="thumbs-up" style="width:11px;height:11px;"></i> ${post.upvotes}
+          </button>
+          <span>💬 ${post.comments ? post.comments.length : 0} replies</span>
+        </div>
+      </div>
+    `).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    feed.querySelectorAll('.ch-upvote-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await Store.upvotePost(btn.dataset.id);
+        await renderChapterDiscussion();
+      });
+    });
+  }
+
+  // Bind tab switch trigger
+  document.querySelectorAll('#chapterTabs .tab-item').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (tab.dataset.tab === 'discussion') {
+        renderChapterDiscussion();
+      }
+    });
+  });
+
+  // Post form submit
+  const postForm = document.getElementById('chapter-post-form');
+  if (postForm) {
+    postForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('chapter-post-title').value;
+      const content = document.getElementById('chapter-post-content').value;
+      await Store.addChapterPost(chapterId, title, content);
+      document.getElementById('chapter-post-title').value = '';
+      document.getElementById('chapter-post-content').value = '';
+      showToast('Comment posted! +20 XP', 'success');
+      await renderChapterDiscussion();
+    });
+  }
 }
 
 function openVideo(videoId, youtubeId) {
@@ -428,12 +514,12 @@ window.closeVideo = function(e) {
   currentVideoId = null;
 }
 
-function onPlayerStateChange(event) {
+async function onPlayerStateChange(event) {
   // If ended
   if (event.data == window.YT.PlayerState.ENDED) {
     if (currentVideoId) {
-      Store.markVideoWatched(currentVideoId);
-      Store.addXP(50);
+      await Store.markVideoWatched(currentVideoId);
+      await Store.addXP(50);
       showToast('Video completed! +50 XP', 'success');
     }
   }

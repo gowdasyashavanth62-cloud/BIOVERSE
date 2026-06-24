@@ -4,9 +4,10 @@ import { isAdmin, isContentManager, isSuperAdmin } from '../../auth.js';
 import { Navbar, initNavbar } from '../../components/navbar.js';
 import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
+import { supabase } from '../../supabase.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render() {
+export async function render() {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
@@ -17,17 +18,17 @@ export function render() {
 
   let currentClassId = 'pu1'; // default selected class filter
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const syllabus = Store.getSyllabus();
+  async function renderPage() {
+    const syllabus = await Store.getSyllabus();
     const canCRUD = isContentManager(); // Content Managers and Super Admins get full CRUD
 
     // Filter units based on active class
     const units = syllabus.filter(u => u.classId === currentClassId);
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -205,7 +206,7 @@ export function render() {
         `,
         actions: [
           { label: 'Cancel', class: 'btn btn-ghost', onClick: () => closeModal() },
-          { label: 'Create Unit', class: 'btn btn-primary', onClick: () => {
+          { label: 'Create Unit', class: 'btn btn-primary', onClick: async () => {
             const number = document.getElementById('uNumber').value.trim();
             const title = document.getElementById('uTitle').value.trim();
             const icon = document.getElementById('uIcon').value.trim();
@@ -214,7 +215,8 @@ export function render() {
               showToast('Number and Title are required', 'error');
               return;
             }
-            Store.addUnit({ number, title, icon, classId });
+            const newId = 'u_' + Date.now();
+            await supabase.from('units').insert({ id: newId, name: title, description: number, icon: icon, class_id: classId });
             Store.logActivity('Create Unit', `Created Unit ${number}: ${title}`);
             closeModal();
             showToast('Unit created successfully', 'success');
@@ -226,7 +228,7 @@ export function render() {
 
     // Edit Unit Action
     document.querySelectorAll('.edit-unit').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const unitId = btn.dataset.uid;
         const unit = Store.getSyllabus().find(u => u.id === unitId);
         if (!unit) return;
@@ -256,7 +258,7 @@ export function render() {
           `,
           actions: [
             { label: 'Cancel', class: 'btn btn-ghost', onClick: () => closeModal() },
-            { label: 'Save Changes', class: 'btn btn-primary', onClick: () => {
+            { label: 'Save Changes', class: 'btn btn-primary', onClick: async () => {
               const number = document.getElementById('uNumber').value.trim();
               const title = document.getElementById('uTitle').value.trim();
               const icon = document.getElementById('uIcon').value.trim();
@@ -265,7 +267,7 @@ export function render() {
                 showToast('Number and Title are required', 'error');
                 return;
               }
-              Store.updateUnit(unitId, { number, title, icon, classId });
+              await supabase.from('units').update({ name: title, description: number, icon: icon, class_id: classId }).eq('id', unitId);
               Store.logActivity('Edit Unit', `Updated Unit ${number}: ${title}`);
               closeModal();
               showToast('Unit updated successfully', 'success');
@@ -283,7 +285,7 @@ export function render() {
         if (await confirmModal('Delete Unit', 'Are you sure you want to delete this Unit? All chapters inside will be lost!')) {
           const syllabus = Store.getSyllabus();
           const unit = syllabus.find(u => u.id === unitId);
-          Store.deleteUnit(unitId);
+          await supabase.from('units').delete().eq('id', unitId);
           Store.logActivity('Delete Unit', `Deleted Unit: ${unit?.title}`);
           showToast('Unit deleted successfully', 'success');
           renderPage();
@@ -293,7 +295,7 @@ export function render() {
 
     // Add Chapter Action
     document.querySelectorAll('.add-chapter').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const unitId = btn.dataset.uid;
         openModal({
           title: 'Add Chapter',
@@ -313,7 +315,7 @@ export function render() {
           `,
           actions: [
             { label: 'Cancel', class: 'btn btn-ghost', onClick: () => closeModal() },
-            { label: 'Add Chapter', class: 'btn btn-primary', onClick: () => {
+            { label: 'Add Chapter', class: 'btn btn-primary', onClick: async () => {
               const title = document.getElementById('chTitle').value.trim();
               const description = document.getElementById('chDesc').value.trim();
               const icon = document.getElementById('chIcon').value.trim();
@@ -321,7 +323,8 @@ export function render() {
                 showToast('Title is required', 'error');
                 return;
               }
-              Store.addChapter(unitId, { title, description, icon });
+              const newId = 'ch_' + Date.now();
+              await supabase.from('chapters').insert({ id: newId, unit_id: unitId, chapter_name: title, description: description });
               Store.logActivity('Create Chapter', `Created Chapter: ${title}`);
               closeModal();
               showToast('Chapter created successfully', 'success');
@@ -334,7 +337,7 @@ export function render() {
 
     // Edit Chapter Action
     document.querySelectorAll('.edit-chapter').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const chapterId = btn.dataset.chid;
         const chapter = Store.getChapter(chapterId);
         if (!chapter) return;
@@ -357,7 +360,7 @@ export function render() {
           `,
           actions: [
             { label: 'Cancel', class: 'btn btn-ghost', onClick: () => closeModal() },
-            { label: 'Save Changes', class: 'btn btn-primary', onClick: () => {
+            { label: 'Save Changes', class: 'btn btn-primary', onClick: async () => {
               const title = document.getElementById('chTitle').value.trim();
               const description = document.getElementById('chDesc').value.trim();
               const icon = document.getElementById('chIcon').value.trim();
@@ -365,7 +368,7 @@ export function render() {
                 showToast('Title is required', 'error');
                 return;
               }
-              Store.updateChapter(chapterId, { title, description, icon });
+              await supabase.from('chapters').update({ chapter_name: title, description: description }).eq('id', chapterId);
               Store.logActivity('Edit Chapter', `Updated Chapter: ${title}`);
               closeModal();
               showToast('Chapter updated successfully', 'success');
@@ -382,7 +385,7 @@ export function render() {
         const chapterId = btn.dataset.chid;
         if (await confirmModal('Delete Chapter', 'Are you sure you want to delete this chapter? All concepts inside will be lost!')) {
           const ch = Store.getChapter(chapterId);
-          Store.deleteChapter(chapterId);
+          await supabase.from('chapters').delete().eq('id', chapterId);
           Store.logActivity('Delete Chapter', `Deleted Chapter: ${ch?.title}`);
           showToast('Chapter deleted successfully', 'success');
           renderPage();
@@ -392,7 +395,7 @@ export function render() {
 
     // Add Concept Action
     document.querySelectorAll('.add-concept').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const chapterId = btn.dataset.chid;
         openModal({
           title: 'Add Concept',
@@ -408,14 +411,15 @@ export function render() {
           `,
           actions: [
             { label: 'Cancel', class: 'btn btn-ghost', onClick: () => closeModal() },
-            { label: 'Add Concept', class: 'btn btn-primary', onClick: () => {
+            { label: 'Add Concept', class: 'btn btn-primary', onClick: async () => {
               const title = document.getElementById('conTitle').value.trim();
               const description = document.getElementById('conDesc').value.trim();
               if (!title) {
                 showToast('Title is required', 'error');
                 return;
               }
-              Store.addConcept(chapterId, { title, description });
+              const newId = 'con_' + Date.now();
+              await supabase.from('concepts').insert({ id: newId, chapter_id: chapterId, concept_name: title, description: description });
               Store.logActivity('Create Concept', `Created Concept: ${title}`);
               closeModal();
               showToast('Concept created successfully', 'success');
@@ -428,7 +432,7 @@ export function render() {
 
     // Edit Concept Action
     document.querySelectorAll('.edit-concept').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const conceptId = btn.dataset.conid;
         const concept = Store.getConcept(conceptId);
         if (!concept) return;
@@ -447,14 +451,14 @@ export function render() {
           `,
           actions: [
             { label: 'Cancel', class: 'btn btn-ghost', onClick: () => closeModal() },
-            { label: 'Save Changes', class: 'btn btn-primary', onClick: () => {
+            { label: 'Save Changes', class: 'btn btn-primary', onClick: async () => {
               const title = document.getElementById('conTitle').value.trim();
               const description = document.getElementById('conDesc').value.trim();
               if (!title) {
                 showToast('Title is required', 'error');
                 return;
               }
-              Store.updateConcept(conceptId, { title, description });
+              await supabase.from('concepts').update({ concept_name: title, description: description }).eq('id', conceptId);
               Store.logActivity('Edit Concept', `Updated Concept: ${title}`);
               closeModal();
               showToast('Concept updated successfully', 'success');
@@ -471,7 +475,7 @@ export function render() {
         const conceptId = btn.dataset.conid;
         if (await confirmModal('Delete Concept', 'Are you sure you want to delete this concept?')) {
           const con = Store.getConcept(conceptId);
-          Store.deleteConcept(conceptId);
+          await supabase.from('concepts').delete().eq('id', conceptId);
           Store.logActivity('Delete Concept', `Deleted Concept: ${con?.title}`);
           showToast('Concept deleted successfully', 'success');
           renderPage();
@@ -483,7 +487,7 @@ export function render() {
     
     // Shift Unit
     document.querySelectorAll('.shift-unit-up, .shift-unit-down').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const unitId = btn.dataset.uid;
         const isUp = btn.classList.contains('shift-unit-up');
         const syllabus = Store.getSyllabus();
@@ -517,7 +521,9 @@ export function render() {
         }
         
         // Re-assign unit numbers if needed, or keep numbers as is. Let's just save.
-        Store.saveSyllabus(updatedSyllabus);
+        for (let i = 0; i < updatedSyllabus.length; i++) {
+          await supabase.from('units').update({ order_number: i }).eq('id', updatedSyllabus[i].id);
+        }
         Store.logActivity('Reorder Units', `Shifted unit ${isUp ? 'up' : 'down'}: ${temp.title}`);
         renderPage();
         showToast('Unit order updated', 'success');
@@ -526,7 +532,7 @@ export function render() {
 
     // Shift Chapter
     document.querySelectorAll('.shift-ch-up, .shift-ch-down').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const unitId = btn.dataset.uid;
         const chapterId = btn.dataset.chid;
         const isUp = btn.classList.contains('shift-ch-up');
@@ -551,7 +557,9 @@ export function render() {
           ch.order = idx + 1;
         });
         
-        Store.saveSyllabus(syllabus);
+        for (let i = 0; i < u.chapters.length; i++) {
+          await supabase.from('chapters').update({ order_number: i }).eq('id', u.chapters[i].id);
+        }
         Store.logActivity('Reorder Chapters', `Shifted chapter ${isUp ? 'up' : 'down'}: ${temp.title}`);
         renderPage();
         showToast('Chapter order updated', 'success');
@@ -560,7 +568,7 @@ export function render() {
 
     // Shift Concept
     document.querySelectorAll('.shift-con-up, .shift-con-down').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const chapterId = btn.dataset.chid;
         const conceptId = btn.dataset.conid;
         const isUp = btn.classList.contains('shift-con-up');
@@ -595,7 +603,9 @@ export function render() {
           con.order = idx + 1;
         });
         
-        Store.saveSyllabus(syllabus);
+        for (let i = 0; i < ch.concepts.length; i++) {
+          await supabase.from('concepts').update({ order_number: i }).eq('id', ch.concepts[i].id);
+        }
         Store.logActivity('Reorder Concepts', `Shifted concept ${isUp ? 'up' : 'down'}: ${temp.title}`);
         renderPage();
         showToast('Concept order updated', 'success');

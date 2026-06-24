@@ -4,13 +4,13 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 
-export function render(params) {
+export async function render(params) {
   const user = Store.getCurrentUser();
   if (!user) { navigateTo('/login'); return; }
   window.navigateTo = navigateTo;
 
   const planId = params.planId === 'yearly' ? 'plan_yearly' : 'plan_monthly';
-  const plans = Store.getPlans();
+  const plans = await Store.getPlans();
   const plan = plans.find(p => p.id === planId) || plans.find(p => p.id === 'plan_monthly');
   
   if (!plan) {
@@ -25,11 +25,11 @@ export function render(params) {
 
   const app = document.getElementById('app');
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
+  async function renderPage() {
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -246,7 +246,7 @@ export function render(params) {
     const input = document.getElementById('couponInput');
     const message = document.getElementById('couponMessage');
     
-    applyBtn.addEventListener('click', () => {
+    applyBtn.addEventListener('click', async () => {
       const code = input.value.trim().toUpperCase();
       message.style.display = 'none';
       message.className = '';
@@ -256,7 +256,7 @@ export function render(params) {
         return;
       }
 
-      const res = Store.validateCoupon(code);
+      const res = await Store.validateCoupon(code);
       if (res.error) {
         message.textContent = res.error;
         message.style.color = 'var(--accent-red)';
@@ -343,7 +343,7 @@ export function render(params) {
       }, 1500);
     });
 
-    document.getElementById('simSuccessBtn').addEventListener('click', () => {
+    document.getElementById('simSuccessBtn').addEventListener('click', async () => {
       // Simulate Successful payment
       rzpConfirm.style.display = 'none';
       rzpLoader.style.display = 'block';
@@ -352,8 +352,8 @@ export function render(params) {
       setTimeout(() => {
         rzpLoader.querySelector('p').textContent = 'Activating Subscription Plan...';
         
-        setTimeout(() => {
-          const userObj = Store.upgradeSubscription(user.id, plan.id === 'plan_yearly' ? 'yearly' : 'monthly', finalPrice, couponCode);
+        setTimeout(async () => {
+          const userObj = await Store.upgradeSubscription(user.id, plan.id === 'plan_yearly' ? 'yearly' : 'monthly', finalPrice, couponCode);
           rzpModal.style.display = 'none';
           
           if (userObj) {

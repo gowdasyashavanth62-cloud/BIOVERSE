@@ -6,7 +6,7 @@ import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render(params) {
+export async function render(params) {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
@@ -21,11 +21,11 @@ export function render(params) {
   let selectedChapter = '';
   let searchQuery = '';
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const allQuestions = Store.getQuestions() || [];
-    const chapters = Store.getAllChapters() || [];
+  async function renderPage() {
+    const allQuestions = await Store.getQuestions() || [];
+    const chapters = await Store.getAllChapters() || [];
 
     // Filter to questions that are PYQs (having a non-null/non-empty year)
     const pyqs = allQuestions.filter(q => q.year !== null && q.year !== undefined && q.year !== '');
@@ -62,7 +62,7 @@ export function render(params) {
     const canDelete = isSuperAdmin() || isContentManager();
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -235,49 +235,49 @@ export function render(params) {
     setupActions();
   }
 
-  function setupFilters() {
+  async function setupFilters() {
     const searchInput = document.getElementById('searchPyq');
     const examSelect = document.getElementById('filterExam');
     const yearSelect = document.getElementById('filterYear');
     const chapterSelect = document.getElementById('filterChapter');
 
-    searchInput?.addEventListener('input', (e) => {
+    searchInput?.addEventListener('input', async (e) => {
       searchQuery = e.target.value;
       debounce(() => renderPage(), 300)();
     });
 
-    examSelect?.addEventListener('change', (e) => {
+    examSelect?.addEventListener('change', async (e) => {
       selectedExam = e.target.value;
-      renderPage();
+      await renderPage();
     });
 
-    yearSelect?.addEventListener('change', (e) => {
+    yearSelect?.addEventListener('change', async (e) => {
       selectedYear = e.target.value;
-      renderPage();
+      await renderPage();
     });
 
-    chapterSelect?.addEventListener('change', (e) => {
+    chapterSelect?.addEventListener('change', async (e) => {
       selectedChapter = e.target.value;
-      renderPage();
+      await renderPage();
     });
   }
 
-  function setupActions() {
+  async function setupActions() {
     // Add PYQ Click
-    document.getElementById('addPyqBtn')?.addEventListener('click', () => {
+    document.getElementById('addPyqBtn')?.addEventListener('click', async () => {
       openAddEditModal();
     });
 
     // View Details Click
     document.querySelectorAll('.view-pyq-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         openPreviewModal(btn.dataset.id);
       });
     });
 
     // Edit PYQ Click
     document.querySelectorAll('.edit-pyq-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         openAddEditModal(btn.dataset.id);
       });
     });
@@ -288,20 +288,20 @@ export function render(params) {
         const pyqId = btn.dataset.id;
         const confirm = await confirmModal('Delete PYQ', 'Are you sure you want to delete this previous year question?');
         if (confirm) {
-          Store.deleteQuestion(pyqId);
+          await Store.deleteQuestion(pyqId);
           showToast('PYQ deleted successfully!', 'success');
-          renderPage();
+          await renderPage();
         }
       });
     });
   }
 
-  function openPreviewModal(pyqId) {
-    const allQuestions = Store.getQuestions();
+  async function openPreviewModal(pyqId) {
+    const allQuestions = await Store.getQuestions();
     const q = allQuestions.find(x => x.id === pyqId);
     if (!q) return;
 
-    const chapters = Store.getAllChapters();
+    const chapters = await Store.getAllChapters();
     const ch = chapters.find(c => c.id === q.chapterId);
     const examName = (q.exam || q.category || '').toUpperCase();
 
@@ -343,20 +343,20 @@ export function render(params) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
 
-  function openAddEditModal(pyqId = null) {
+  async function openAddEditModal(pyqId = null) {
     const isEdit = pyqId !== null;
     let pyqData = { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '', year: new Date().getFullYear(), category: 'neet', exam: 'neet', chapterId: '', conceptId: null };
 
     if (isEdit) {
-      const allQuestions = Store.getQuestions();
+      const allQuestions = await Store.getQuestions();
       const existing = allQuestions.find(x => x.id === pyqId);
       if (existing) {
         pyqData = { ...existing };
       }
     }
 
-    const syllabus = Store.getSyllabus();
-    const allChapters = Store.getAllChapters();
+    const syllabus = await Store.getSyllabus();
+    const allChapters = await Store.getAllChapters();
 
     openModal({
       title: isEdit ? 'Edit PYQ Details' : 'Add Previous Year Question',
@@ -434,7 +434,7 @@ export function render(params) {
     });
   }
 
-  function handleSave(pyqId = null) {
+  async function handleSave(pyqId = null) {
     const exam = document.getElementById('mPyqExam')?.value;
     const yearVal = document.getElementById('mPyqYear')?.value.trim();
     const chapterId = document.getElementById('mPyqChapter')?.value;
@@ -468,20 +468,20 @@ export function render(params) {
     };
 
     if (pyqId) {
-      Store.updateQuestion(pyqId, payload);
+      await Store.updateQuestion(pyqId, payload);
       showToast('PYQ updated successfully!', 'success');
     } else {
-      Store.addQuestion(payload);
+      await Store.addQuestion(payload);
       showToast('PYQ added successfully!', 'success');
     }
 
     closeModal();
-    renderPage();
+    await renderPage();
   }
 
   // Simple debounce helper
   let timeout;
-  function debounce(func, delay) {
+  async function debounce(func, delay) {
     return function() {
       const context = this;
       const args = arguments;

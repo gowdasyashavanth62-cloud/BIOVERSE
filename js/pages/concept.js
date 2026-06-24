@@ -4,14 +4,14 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
-  const concept = Store.getConcept(params.conceptId);
+  const concept = await Store.getConcept(params.conceptId);
   if (!concept) { navigateTo('/dashboard'); return; }
 
-  const videos = Store.getVideos(params.conceptId);
-  const questions = Store.getQuestions({ conceptId: params.conceptId }).slice(0, 5);
-  const progress = Store.getProgress();
+  const videos = await Store.getVideos(params.conceptId);
+  const questions = (await Store.getQuestions({ conceptId: params.conceptId })).slice(0, 5);
+  const progress = await Store.getProgress();
 
   window.navigateTo = navigateTo;
 
@@ -19,7 +19,7 @@ export function render(params) {
   const classLabel = classId === 'pu1' ? '1st PU' : '2nd PU';
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -105,14 +105,14 @@ export function render(params) {
 
   // Video switching
   document.querySelectorAll('.video-list-item').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', async () => {
       const iframe = document.getElementById('mainVideo');
       const titleEl = document.getElementById('currentVideoTitle');
       iframe.src = `https://www.youtube.com/embed/${item.dataset.videoYt}`;
       titleEl.textContent = item.dataset.videoTitle;
       document.querySelectorAll('.video-list-item').forEach(v => v.classList.remove('active'));
       item.classList.add('active');
-      Store.markVideoWatched(item.dataset.videoId);
+      await Store.markVideoWatched(item.dataset.videoId);
     });
   });
 
@@ -134,5 +134,5 @@ export function render(params) {
   });
 
   // Mark first video as watched
-  if (videos.length > 0) Store.markVideoWatched(videos[0].id);
+  if (videos.length > 0) await Store.markVideoWatched(videos[0].id);
 }

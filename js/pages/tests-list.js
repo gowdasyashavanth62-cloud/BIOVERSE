@@ -5,14 +5,15 @@ import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { isPremium } from '../auth.js';
 import { showToast } from '../components/toast.js';
 
-export function render() {
+export async function render() {
   const app = document.getElementById('app');
   const premium = isPremium();
-  const tests = Store.getTests();
+  const tests = await Store.getTests();
   const chapterTests = tests.filter(t => t.type === 'chapter');
   const unitTests = tests.filter(t => t.type === 'unit');
   const mockTests = tests.filter(t => t.type === 'mock');
-  const results = Store.getTestResults();
+  const results = await Store.getTestResults();
+  const allChapters = await Store.getAllChapters();
   window.navigateTo = navigateTo;
 
   window.showPremiumToastAndRedirect = () => {
@@ -50,7 +51,7 @@ export function render() {
   }
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -69,7 +70,7 @@ export function render() {
               <div class="form-group" style="flex:1.5; min-width:200px; margin-bottom:0;">
                 <label for="ai-test-chapter" style="font-weight:600;">Select Chapter</label>
                 <select id="ai-test-chapter" class="form-control" style="background:rgba(30, 41, 59, 0.85); color:white; border: 1px solid rgba(255,255,255,0.1);">
-                  ${Store.getAllChapters().map(ch => `<option value="${ch.id}">${ch.title}</option>`).join('')}
+                  ${allChapters.map(ch => `<option value="${ch.id}">${ch.title}</option>`).join('')}
                 </select>
               </div>
               <div class="form-group" style="flex:1; min-width:140px; margin-bottom:0;">
@@ -126,7 +127,7 @@ export function render() {
   // Custom test builder submit
   const aiTestForm = document.getElementById('ai-test-form');
   if (aiTestForm) {
-    aiTestForm.addEventListener('submit', (e) => {
+    aiTestForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!premium) {
         showPremiumToastAndRedirect();
@@ -136,7 +137,7 @@ export function render() {
       const diff = document.getElementById('ai-test-difficulty').value;
       const count = parseInt(document.getElementById('ai-test-count').value, 10);
       
-      const newTest = Store.generateCustomTest(chId, diff, count);
+      const newTest = await Store.generateCustomTest(chId, diff, count);
       if (newTest) {
         showToast('Custom AI Test generated successfully!', 'success');
         navigateTo(`/test/${newTest.id}`);

@@ -6,20 +6,20 @@ import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render() {
+export async function render() {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
   }
   const app = document.getElementById('app');
   window.navigateTo = navigateTo;
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const students = Store.getAllStudents();
+  async function renderPage() {
+    const students = await Store.getAllStudents();
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -110,31 +110,31 @@ export function render() {
 
     // Toggle Subscription
     document.querySelectorAll('.sub-toggle').forEach(sel => {
-      sel.addEventListener('change', () => {
-        Store.updateStudentSubscription(sel.dataset.uid, sel.value);
+      sel.addEventListener('change', async () => {
+        await Store.updateStudentSubscription(sel.dataset.uid, sel.value);
         showToast(`Subscription plan updated to ${sel.value.toUpperCase()}`, 'success');
       });
     });
 
     // Approve Student
     document.querySelectorAll('.approve-student').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         Store.approveStudent(btn.dataset.uid);
         showToast('Student account approved successfully', 'success');
-        renderPage();
+        await renderPage();
       });
     });
 
     // Toggle Suspend
     document.querySelectorAll('.toggle-suspend').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const uid = btn.dataset.uid;
-        const targetStudent = Store.getAllStudents().find(s => s.id === uid);
+        const targetStudent = await Store.getAllStudents().find(s => s.id === uid);
         const actionWord = targetStudent?.status === 'suspended' ? 'activate' : 'suspend';
         
         Store.toggleStudentSuspension(uid);
         showToast(`Student account ${actionWord}d successfully`, 'success');
-        renderPage();
+        await renderPage();
       });
     });
 
@@ -143,29 +143,29 @@ export function render() {
       btn.addEventListener('click', async () => {
         const uid = btn.dataset.uid;
         if (await confirmModal('Delete Student', 'This will permanently delete this student, their test records, and progress logs. Continue?')) {
-          Store.deleteStudent(uid);
+          await Store.deleteStudent(uid);
           showToast('Student deleted successfully', 'success');
-          renderPage();
+          await renderPage();
         }
       });
     });
 
     // View Student Details Modal
     document.querySelectorAll('.view-student').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const uid = btn.dataset.uid;
         openStudentDetailsModal(uid);
       });
     });
   }
 
-  function openStudentDetailsModal(studentId) {
-    const student = Store.getAllUsers().find(u => u.id === studentId);
+  async function openStudentDetailsModal(studentId) {
+    const student = await Store.getAllUsers().find(u => u.id === studentId);
     if (!student) return;
 
-    const progress = Store.getProgress(studentId);
-    const testResults = Store.getTestResultsForUser(studentId);
-    const studentLogs = Store.getActivityLogs()
+    const progress = await Store.getProgress(studentId);
+    const testResults = await Store.getTestResultsForUser(studentId);
+    const studentLogs = await Store.getActivityLogs()
       .filter(log => log.userEmail === student.email)
       .slice()
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))

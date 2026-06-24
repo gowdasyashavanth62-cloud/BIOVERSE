@@ -4,20 +4,20 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 
-export function render(params) {
+export async function render(params) {
   const user = Store.getCurrentUser();
   if (!user) { navigateTo('/login'); return; }
   window.navigateTo = navigateTo;
 
   const app = document.getElementById('app');
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const freshUser = Store.getAllUsers().find(u => u.id === user.id);
+  async function renderPage() {
+    const freshUser = await Store.getUserProfile(user.id) || user;
     
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -182,7 +182,7 @@ export function render(params) {
 
   function setupProfileForm() {
     const form = document.getElementById('profileSettingsForm');
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('setName').value.trim();
       const phone = document.getElementById('setPhone').value.trim();
@@ -193,7 +193,7 @@ export function render(params) {
         return;
       }
 
-      Store.updateProfile({ name, phone, class: classVal });
+      await Store.updateProfile({ full_name: name, phone, class: classVal });
       showToast('Profile settings saved successfully!', 'success');
       
       // Update global header/name details
@@ -205,7 +205,7 @@ export function render(params) {
 
   function setupPasswordForm() {
     const form = document.getElementById('passwordSettingsForm');
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const oldPwd = document.getElementById('oldPwd').value;
       const newPwd = document.getElementById('newPwd').value;
@@ -221,8 +221,8 @@ export function render(params) {
         return;
       }
 
-      const res = Store.changePassword(oldPwd, newPwd);
-      if (res.error) {
+      const res = await Store.changePassword(oldPwd, newPwd);
+      if (res && res.error) {
         showToast(res.error, 'error');
       } else {
         showToast('Password changed successfully!', 'success');

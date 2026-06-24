@@ -4,7 +4,7 @@ import { isAdmin, isSuperAdmin, formatDate } from '../../auth.js';
 import { Navbar, initNavbar } from '../../components/navbar.js';
 import { Sidebar, initSidebar } from '../../components/sidebar.js';
 
-export function render() {
+export async function render() {
   if (!isAdmin()) {
     navigateTo('/dashboard');
     return;
@@ -14,15 +14,21 @@ export function render() {
   window.navigateTo = navigateTo;
 
   // Retrieve metrics
-  const stats = Store.getStats();
-  const students = Store.getAllStudents();
+  const stats = await Store.getStats();
+  
+  // Use raw supabase queries for admin
+  const { supabase } = await import('../../supabase.js');
+  
+  const { data: students } = await supabase.from('users').select('*').eq('role', 'student');
+  const allStudents = students || [];
   
   // Calculate active students: status approved/not suspended
-  const activeStudentsCount = students.filter(s => s.status !== 'suspended').length;
-  const premiumStudentsCount = students.filter(s => s.subscription === 'premium').length;
+  const activeStudentsCount = allStudents.filter(s => s.status !== 'suspended').length;
+  const premiumStudentsCount = allStudents.filter(s => s.subscription_status === 'active').length;
 
   // Calculate real revenue from payment histories of all users
-  const allUsers = Store.getAllUsers();
+  const { data: usersData } = await supabase.from('users').select('paymentHistory');
+  const allUsers = usersData || [];
   let totalRevenue = 0;
   let revenueToday = 0;
   let revenueMonth = 0;
@@ -32,7 +38,7 @@ export function render() {
   const startOf30DaysAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
 
   allUsers.forEach(u => {
-    if (u.paymentHistory) {
+    if (u.paymentHistory && Array.isArray(u.paymentHistory)) {
       u.paymentHistory.forEach(p => {
         if (p.status === 'success') {
           totalRevenue += p.amount;
@@ -52,35 +58,37 @@ export function render() {
   const churnRate = 5; // Fixed mock churn rate 5%
 
   // Most Attempted Tests
-  const allResults = Store.getAllTestResults();
+  const { data: allResults } = await supabase.from('results').select('test_id');
   const testAttemptsMap = {};
-  allResults.forEach(r => {
-    testAttemptsMap[r.testId] = (testAttemptsMap[r.testId] || 0) + 1;
+  (allResults || []).forEach(r => {
+    testAttemptsMap[r.test_id] = (testAttemptsMap[r.test_id] || 0) + 1;
   });
   
-  const allTests = Store.getTests();
-  const mostAttemptedTests = allTests
+  const { data: allTests } = await supabase.from('tests').select('id, title, class_id');
+  const mostAttemptedTests = (allTests || [])
     .map(t => ({ ...t, attempts: testAttemptsMap[t.id] || 0 }))
     .sort((a, b) => b.attempts - a.attempts)
     .slice(0, 5);
 
   // Most Viewed Chapters
-  const viewsMap = Store.getChapterViews();
-  const allChapters = Store.getAllChapters();
-  const mostViewedChapters = allChapters
+  const { data: viewsData } = await supabase.from('progress').select('chapter_id');
+  const viewsMap = {};
+  (viewsData || []).forEach(v => {
+    if (v.chapter_id) viewsMap[v.chapter_id] = (viewsMap[v.chapter_id] || 0) + 1;
+  });
+
+  const { data: chaptersData } = await supabase.from('chapters').select('id, title');
+  const mostViewedChapters = (chaptersData || [])
     .map(c => ({ ...c, views: viewsMap[c.id] || 0 }))
     .sort((a, b) => b.views - a.views)
     .slice(0, 5);
 
   // Audit Trail (recent 5 actions)
-  const auditTrail = Store.getActivityLogs()
-    .slice()
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 5);
+  const auditTrail = []; // Fallback for logs as we don't have an activity_logs table yet
 
   // Render Page HTML
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -330,7 +338,7 @@ async function initGraphs() {
   }
 }
 
-function loadChartJS() {
+async function loadChartJS() {
   return new Promise((resolve) => {
     if (window.Chart) {
       resolve();

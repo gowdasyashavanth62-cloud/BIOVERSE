@@ -28,6 +28,8 @@
   <link rel="stylesheet" href="/css/sidebar.css">
   <link rel="stylesheet" href="/css/chapter.css">
   <link rel="stylesheet" href="/css/admin.css">
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
   <div id="app"></div>
@@ -40,5 +42,16 @@
   <!-- External APIs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
+  
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
+          .catch((err) => console.warn('Service Worker registration failed:', err));
+      });
+    }
+  </script>
 </body>
 </html>

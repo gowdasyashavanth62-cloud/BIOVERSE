@@ -378,7 +378,7 @@ export function render(params) {
     setupTestimonialsActions();
   }
 
-  function setupSettingsTabs() {
+  async function setupSettingsTabs() {
     const tabs = document.querySelectorAll('#settingsConsoleTabs .tab-item');
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
@@ -392,7 +392,7 @@ export function render(params) {
     });
   }
 
-  function setupAnnouncementForm() {
+  async function setupAnnouncementForm() {
     const form = document.getElementById('announcementForm');
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -416,7 +416,7 @@ export function render(params) {
     });
   }
 
-  function setupPaymentForm() {
+  async function setupPaymentForm() {
     const form = document.getElementById('paymentSettingsForm');
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -430,7 +430,7 @@ export function render(params) {
     });
   }
 
-  function setupPlansForm() {
+  async function setupPlansForm() {
     const form = document.getElementById('plansSettingsForm');
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -445,7 +445,7 @@ export function render(params) {
     });
   }
 
-  function setupCouponsForm() {
+  async function setupCouponsForm() {
     const form = document.getElementById('addCouponForm');
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -474,7 +474,7 @@ export function render(params) {
     });
   }
 
-  function setupTestimonialsActions() {
+  async function setupTestimonialsActions() {
     document.querySelectorAll('.approve-tst-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.tstId;

@@ -5,17 +5,17 @@ import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 import { isPremium } from '../auth.js';
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
-  const chapter = Store.getChapter(params.chapterId);
+  const chapter = await Store.getChapter(params.chapterId);
   if (!chapter) { navigateTo('/dashboard'); return; }
-  const notes = Store.getNotes(params.chapterId);
-  const progress = Store.getProgress();
+  const notes = await Store.getNotes(params.chapterId);
+  const progress = await Store.getProgress();
   window.navigateTo = navigateTo;
   const classLabel = chapter.classId === 'pu1' ? '1st PU' : '2nd PU';
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -50,7 +50,7 @@ export function render(params) {
               <div class="empty-state card"><i data-lucide="file-text"></i><h3>No Notes Available</h3><p>Notes for this chapter will be uploaded soon.</p></div>
             ` : notes.map((n, index) => {
               const isLocked = !isPremium() && index > 0;
-              const isRead = progress.notesRead?.includes(n.id);
+              const isRead = progress.notesRead?.includes(n.concept_id);
               
               if (isLocked) {
                 return `
@@ -188,14 +188,14 @@ export function render(params) {
 
   // Mark read
   document.querySelectorAll('.mark-read-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      Store.markNoteRead(btn.dataset.noteId);
+    btn.addEventListener('click', async () => {
+      await Store.markNoteRead(btn.dataset.noteId);
       btn.textContent = 'Read ✓';
       btn.classList.remove('btn-primary');
       btn.classList.add('btn-ghost');
       showToast('Note marked as read & +10 XP!', 'success');
       // Add XP
-      Store.addXP(10);
+      await Store.addXP(10);
     });
   });
 

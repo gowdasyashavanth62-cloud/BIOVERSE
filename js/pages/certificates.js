@@ -4,33 +4,37 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { showToast } from '../components/toast.js';
 
-export function render(params) {
+export async function render(params) {
   const user = Store.getCurrentUser();
   if (!user) { navigateTo('/login'); return; }
   window.navigateTo = navigateTo;
 
   const app = document.getElementById('app');
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const unlockedCerts = Store.getCertificatesForUser(user.id) || [];
+  async function renderPage() {
+    const unlockedCerts = await Store.getCertificatesForUser(user.id) || [];
     
     // Evaluate progress thresholds for certificates
-    const pu1Prog = Store.getOverallProgress('pu1');
-    const pu2Prog = Store.getOverallProgress('pu2');
+    const pu1Prog = await Store.getOverallProgress('pu1');
+    const pu2Prog = await Store.getOverallProgress('pu2');
     
     // Let's get Unit 1 Progress (Diversity in the Living World)
     const unit1Id = 'unit_1'; // Diversity in the Living World
-    const u1Chapters = Store.getAllChapters('pu1');
+    const u1Chapters = await Store.getAllChapters('pu1') || [];
     let u1TotalPercentage = 0;
     if (u1Chapters.length > 0) {
-      u1Chapters.forEach(c => u1TotalPercentage += Store.getChapterProgress(c.id).percentage);
+      for (const c of u1Chapters) {
+        const prog = await Store.getChapterProgress(c.id);
+        u1TotalPercentage += prog.percentage;
+      }
       u1TotalPercentage = Math.round(u1TotalPercentage / u1Chapters.length);
     }
     
     // Let's get Chapter 1 Progress (The Living World)
-    const ch1Prog = Store.getChapterProgress('ch_living_world').percentage;
+    const ch1ProgObj = await Store.getChapterProgress('ch_living_world');
+    const ch1Prog = ch1ProgObj.percentage;
 
     const certCatalog = [
       {
@@ -72,7 +76,7 @@ export function render(params) {
     ];
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -170,14 +174,14 @@ export function render(params) {
   function setupCertificateActions() {
     // Claim Certificate Button Click
     document.querySelectorAll('.generate-cert-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const course = btn.dataset.target;
         const type = btn.dataset.type;
         
-        const cert = Store.generateCertificate(user.id, course, type);
+        const cert = await Store.generateCertificate(user.id, course, type);
         if (cert) {
           showToast('Certificate generated successfully! 🎉', 'success');
-          renderPage();
+          await renderPage();
         } else {
           showToast('Failed to claim certificate. Please try again.', 'error');
         }
@@ -186,57 +190,57 @@ export function render(params) {
 
     // Simulate 100% Completion Debug Button Click
     document.querySelectorAll('.debug-complete-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const targetId = btn.dataset.targetId;
         
         if (targetId === 'course_pu1') {
           // Mock watch/read items for pu1
-          const videos = Store.getVideos();
-          const notes = Store.getNotes();
-          videos.forEach(v => {
-            const ch = Store.getChapter(v.chapterId);
-            if (ch && ch.classId === 'pu1') Store.markVideoWatched(v.id);
-          });
-          notes.forEach(n => {
-            const ch = Store.getChapter(n.chapterId);
-            if (ch && ch.classId === 'pu1') Store.markNoteRead(n.id);
-          });
+          const videos = await Store.getVideos();
+          const notes = await Store.getNotes();
+          for (const v of videos) {
+            const ch = await Store.getChapter(v.chapterId);
+            if (ch && ch.classId === 'pu1') await Store.markVideoWatched(v.id);
+          }
+          for (const n of notes) {
+            const ch = await Store.getChapter(n.chapterId);
+            if (ch && ch.classId === 'pu1') await Store.markNoteRead(n.id);
+          }
           showToast('Simulated 1st PU Course Complete!', 'success');
         } else if (targetId === 'course_pu2') {
           // Mock watch/read items for pu2
-          const videos = Store.getVideos();
-          const notes = Store.getNotes();
-          videos.forEach(v => {
-            const ch = Store.getChapter(v.chapterId);
-            if (ch && ch.classId === 'pu2') Store.markVideoWatched(v.id);
-          });
-          notes.forEach(n => {
-            const ch = Store.getChapter(n.chapterId);
-            if (ch && ch.classId === 'pu2') Store.markNoteRead(n.id);
-          });
+          const videos = await Store.getVideos();
+          const notes = await Store.getNotes();
+          for (const v of videos) {
+            const ch = await Store.getChapter(v.chapterId);
+            if (ch && ch.classId === 'pu2') await Store.markVideoWatched(v.id);
+          }
+          for (const n of notes) {
+            const ch = await Store.getChapter(n.chapterId);
+            if (ch && ch.classId === 'pu2') await Store.markNoteRead(n.id);
+          }
           showToast('Simulated 2nd PU Course Complete!', 'success');
         } else if (targetId === 'unit_diversity') {
           // Mock Unit 1 (The Living World, Biological Classification, Plant, Animal)
           const chs = ['ch_living_world', 'ch_bio_classification', 'ch_plant_kingdom', 'ch_animal_kingdom'];
-          const videos = Store.getVideos();
-          const notes = Store.getNotes();
-          videos.forEach(v => {
-            if (chs.includes(v.chapterId)) Store.markVideoWatched(v.id);
-          });
-          notes.forEach(n => {
-            if (chs.includes(n.chapterId)) Store.markNoteRead(n.id);
-          });
+          const videos = await Store.getVideos();
+          const notes = await Store.getNotes();
+          for (const v of videos) {
+            if (chs.includes(v.chapterId)) await Store.markVideoWatched(v.id);
+          }
+          for (const n of notes) {
+            if (chs.includes(n.chapterId)) await Store.markNoteRead(n.id);
+          }
           showToast('Simulated Unit I Course Complete!', 'success');
         } else if (targetId === 'ch_living') {
           // Mock Chapter 1 items
-          const videos = Store.getVideosByChapter('ch_living_world');
-          const notes = Store.getNotes('ch_living_world');
-          videos.forEach(v => Store.markVideoWatched(v.id));
-          notes.forEach(n => Store.markNoteRead(n.id));
+          const videos = await Store.getVideosByChapter('ch_living_world');
+          const notes = await Store.getNotes('ch_living_world');
+          for (const v of videos) await Store.markVideoWatched(v.id);
+          for (const n of notes) await Store.markNoteRead(n.id);
           showToast('Simulated Chapter 1 Complete!', 'success');
         }
 
-        renderPage();
+        await renderPage();
       });
     });
   }

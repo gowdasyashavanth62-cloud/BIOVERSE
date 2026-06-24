@@ -5,11 +5,11 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { CircularProgress } from '../components/progress-bar.js';
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
-  const result = Store.getTestResult(params.resultId);
+  const result = await Store.getTestResult(params.resultId);
   if (!result) { navigateTo('/tests'); return; }
-  const test = Store.getTest(result.testId);
+  const test = await Store.getTest(result.testId);
   window.navigateTo = navigateTo;
 
   const scoreColor = result.accuracy >= 80 ? 'var(--success)' : result.accuracy >= 50 ? 'var(--warning)' : 'var(--error)';
@@ -17,7 +17,7 @@ export function render(params) {
   const scoreMsg = result.accuracy >= 80 ? 'Excellent! Great job!' : result.accuracy >= 50 ? 'Good effort! Keep practicing.' : 'Don\'t worry, keep learning!';
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">

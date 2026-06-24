@@ -1,12 +1,10 @@
 import { Store } from './store.js';
 import { initRouter } from './router.js';
-import { seedData } from './data/seed.js';
 
-// ── Seed initial data if first launch ──
-if (!Store.isSeeded()) {
-  seedData();
-  Store.markSeeded();
-}
+// ── Initialize Auth Session ──
+// Wait for Supabase to resolve the session before booting the router to avoid redirection glitches.
+await Store.initAuth();
+
 
 // ── Route Definitions ──
 // Each route lazily imports its page module for code-splitting
@@ -47,6 +45,13 @@ const routes = {
   '/launch':            async (p) => (await import('./pages/launch.js')).render(p),
   '/settings':          async (p) => (await import('./pages/settings.js')).render(p),
   '/ai-tutor':          async (p) => (await import('./pages/ai-tutor.js')).render(p),
+  '/community':         async (p) => (await import('./pages/community.js')).render(p),
+  '/flashcards':        async (p) => (await import('./pages/flashcards.js')).render(p),
+  '/revision':          async (p) => (await import('./pages/revision.js')).render(p),
+  '/memory-game':       async (p) => (await import('./pages/memory-game.js')).render(p),
+  '/live':              async (p) => (await import('./pages/live.js')).render(p),
+  '/rewards':           async (p) => (await import('./pages/rewards.js')).render(p),
+  '/leaderboard':       async (p) => (await import('./pages/leaderboard.js')).render(p),
   '/admin':             async (p) => (await import('./pages/admin/admin-dashboard.js')).render(p),
   '/admin/content':     async (p) => (await import('./pages/admin/manage-content.js')).render(p),
   '/admin/videos':      async (p) => (await import('./pages/admin/manage-videos.js')).render(p),

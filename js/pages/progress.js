@@ -5,21 +5,30 @@ import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { ProgressBar, CircularProgress } from '../components/progress-bar.js';
 import { StreakBadge } from '../components/stats.js';
 
-export function render() {
+export async function render() {
   const app = document.getElementById('app');
   const user = Store.getCurrentUser();
-  const progress = Store.getProgress();
-  const pu1Progress = Store.getOverallProgress('pu1');
-  const pu2Progress = Store.getOverallProgress('pu2');
-  const results = Store.getTestResults();
-  const pu1Chapters = Store.getAllChapters('pu1');
-  const pu2Chapters = Store.getAllChapters('pu2');
+  const progress = await Store.getProgress();
+  const pu1Progress = await Store.getOverallProgress('pu1');
+  const pu2Progress = await Store.getOverallProgress('pu2');
+  const results = await Store.getTestResults();
+  const pu1Chapters = await Store.getAllChapters('pu1');
+  const pu2Chapters = await Store.getAllChapters('pu2');
   window.navigateTo = navigateTo;
+
+  // Resolve chapter progress concurrently
+  const [pu1ProgressList, pu2ProgressList] = await Promise.all([
+    Promise.all(pu1Chapters.map(async (ch) => ({ id: ch.id, cp: await Store.getChapterProgress(ch.id) }))),
+    Promise.all(pu2Chapters.map(async (ch) => ({ id: ch.id, cp: await Store.getChapterProgress(ch.id) })))
+  ]);
+
+  const pu1ChapterProgressMap = new Map(pu1ProgressList.map(item => [item.id, item.cp]));
+  const pu2ChapterProgressMap = new Map(pu2ProgressList.map(item => [item.id, item.cp]));
 
   const avgScore = results.length > 0 ? Math.round(results.reduce((s, r) => s + r.accuracy, 0) / results.length) : 0;
 
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -65,7 +74,7 @@ export function render() {
             ${ProgressBar(pu1Progress, { height: '10px' })}
             <div class="chapter-progress-list">
               ${pu1Chapters.map(ch => {
-                const cp = Store.getChapterProgress(ch.id);
+                const cp = pu1ChapterProgressMap.get(ch.id);
                 return `
                   <div class="ch-progress-row" onclick="navigateTo('/chapter/${ch.id}')">
                     <span>${ch.icon || '📖'} ${ch.title}</span>
@@ -80,7 +89,7 @@ export function render() {
             ${ProgressBar(pu2Progress, { height: '10px' })}
             <div class="chapter-progress-list">
               ${pu2Chapters.map(ch => {
-                const cp = Store.getChapterProgress(ch.id);
+                const cp = pu2ChapterProgressMap.get(ch.id);
                 return `
                   <div class="ch-progress-row" onclick="navigateTo('/chapter/${ch.id}')">
                     <span>${ch.icon || '📖'} ${ch.title}</span>

@@ -4,16 +4,26 @@ import { Navbar, initNavbar } from '../components/navbar.js';
 import { Sidebar, initSidebar } from '../components/sidebar.js';
 import { ProgressBar } from '../components/progress-bar.js';
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
   const classId = params.classId;
   const className = classId === 'pu1' ? '1st PU Biology' : '2nd PU Biology';
   const classEmoji = classId === 'pu1' ? '🌱' : '🧬';
-  const units = Store.getUnits(classId);
+  const units = await Store.getUnits(classId);
   window.navigateTo = navigateTo;
 
+  // Pre-load all chapter progress details concurrently
+  for (const unit of units) {
+    unit.chapterProgress = await Promise.all(
+      (unit.chapters || []).map(async (ch) => {
+        const cp = await Store.getChapterProgress(ch.id);
+        return { chapterId: ch.id, progress: cp };
+      })
+    );
+  }
+
   app.innerHTML = `
-    ${Navbar()}
+    ${await Navbar()}
     <div class="app-layout">
       ${Sidebar()}
       <main class="main-content">
@@ -25,7 +35,7 @@ export function render(params) {
             <span>${className}</span>
           </div>
           <h1>${classEmoji} ${className}</h1>
-          <p>${units.length} Units · ${units.reduce((s, u) => s + u.chapters.length, 0)} Chapters</p>
+          <p>${units.length} Units · ${units.reduce((s, u) => s + (u.chapters || []).length, 0)} Chapters</p>
         </div>
 
         <!-- Search -->
@@ -45,15 +55,16 @@ export function render(params) {
                   <span class="unit-icon">${unit.icon || '📘'}</span>
                   <div>
                     <h3>Unit ${unit.number}: ${unit.title}</h3>
-                    <p class="text-muted">${unit.chapters.length} Chapters · ${unit.description || ''}</p>
+                    <p class="text-muted">${(unit.chapters || []).length} Chapters · ${unit.description || ''}</p>
                   </div>
                 </div>
                 <i data-lucide="chevron-down" class="accordion-arrow"></i>
               </button>
               <div class="accordion-content" id="unit-${ui}">
                 <div class="chapters-grid">
-                  ${unit.chapters.map((ch, ci) => {
-                    const cp = Store.getChapterProgress(ch.id);
+                  ${(unit.chapters || []).map((ch, ci) => {
+                    const cpData = unit.chapterProgress.find(p => p.chapterId === ch.id);
+                    const cp = cpData ? cpData.progress : { percentage: 0, videos: { total: 0, completed: 0 }, notes: { total: 0, completed: 0 }, questions: { total: 0 } };
                     return `
                       <div class="chapter-card-item card hover-lift" onclick="navigateTo('/chapter/${ch.id}')" data-chapter-name="${(ch.title || '').toLowerCase()}">
                         <div class="chapter-card-top">

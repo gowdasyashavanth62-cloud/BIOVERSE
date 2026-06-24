@@ -6,14 +6,14 @@ import { Sidebar, initSidebar } from '../../components/sidebar.js';
 import { showToast } from '../../components/toast.js';
 import { openModal, closeModal, confirmModal } from '../../components/modal.js';
 
-export function render(params) {
+export async function render(params) {
   const app = document.getElementById('app');
   window.navigateTo = navigateTo;
 
   // 1. Role Check
   if (!isSuperAdmin()) {
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content" style="display:flex;align-items:center;justify-content:center;min-height:70vh;">
@@ -36,11 +36,11 @@ export function render(params) {
     return;
   }
 
-  renderPage();
+  await renderPage();
 
-  function renderPage() {
-    const plans = Store.getPlans() || [];
-    const students = Store.getAllStudents() || [];
+  async function renderPage() {
+    const plans = await Store.getPlans() || [];
+    const students = await Store.getAllStudents() || [];
 
     // Calculate Stats
     const activeSubscribers = students.filter(s => s.subscription === 'premium').length;
@@ -57,7 +57,7 @@ export function render(params) {
     const totalEstAnnualRevenue = (monthlyRevenue * 12) + yearlyRevenue;
 
     app.innerHTML = `
-      ${Navbar()}
+      ${await Navbar()}
       <div class="app-layout">
         ${Sidebar()}
         <main class="main-content">
@@ -178,28 +178,28 @@ export function render(params) {
     setupActions();
   }
 
-  function setupActions() {
+  async function setupActions() {
     // Add Plan Click
-    document.getElementById('addPlanBtn')?.addEventListener('click', () => {
+    document.getElementById('addPlanBtn')?.addEventListener('click', async () => {
       openAddEditModal();
     });
 
     // Edit Plan Click
     document.querySelectorAll('.edit-plan-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         openAddEditModal(btn.dataset.id);
       });
     });
 
     // Toggle Active State
     document.querySelectorAll('.toggle-active-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const planId = btn.dataset.id;
         const currentActive = btn.dataset.active === 'true';
         
-        Store.updatePlan(planId, { active: !currentActive });
+        await Store.updatePlan(planId, { active: !currentActive });
         showToast(`Plan ${currentActive ? 'deactivated' : 'activated'} successfully!`, 'success');
-        renderPage();
+        await renderPage();
       });
     });
 
@@ -207,26 +207,26 @@ export function render(params) {
     document.querySelectorAll('.delete-plan-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const planId = btn.dataset.id;
-        const plans = Store.getPlans();
+        const plans = await Store.getPlans();
         const p = plans.find(x => x.id === planId);
         if (!p) return;
 
         const confirm = await confirmModal('Delete Plan', `Are you sure you want to delete plan "${p.name}"? This cannot be undone.`);
         if (confirm) {
-          Store.deletePlan(planId);
+          await Store.deletePlan(planId);
           showToast('Plan deleted successfully!', 'success');
-          renderPage();
+          await renderPage();
         }
       });
     });
   }
 
-  function openAddEditModal(planId = null) {
+  async function openAddEditModal(planId = null) {
     const isEdit = planId !== null;
     let planData = { name: '', price: 0, interval: 'month', features: [], active: true };
 
     if (isEdit) {
-      const plans = Store.getPlans();
+      const plans = await Store.getPlans();
       const existing = plans.find(p => p.id === planId);
       if (existing) planData = { ...existing };
     }
@@ -272,7 +272,7 @@ export function render(params) {
     });
   }
 
-  function handleSave(planId = null) {
+  async function handleSave(planId = null) {
     const name = document.getElementById('mPlanName')?.value.trim();
     const priceVal = document.getElementById('mPlanPrice')?.value.trim();
     const interval = document.getElementById('mPlanInterval')?.value;
@@ -296,14 +296,14 @@ export function render(params) {
     };
 
     if (planId) {
-      Store.updatePlan(planId, payload);
+      await Store.updatePlan(planId, payload);
       showToast('Subscription plan updated!', 'success');
     } else {
-      Store.addPlan(payload);
+      await Store.addPlan(payload);
       showToast('Subscription plan created!', 'success');
     }
 
     closeModal();
-    renderPage();
+    await renderPage();
   }
 }
