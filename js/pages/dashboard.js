@@ -52,7 +52,18 @@ export async function render() {
     : '';
 
   // Render Daily Tasks dynamically
-  const dailyHtml = dailyChall.tasks.map(t => {
+  const dailyTasks = dailyChall.tasks || [
+    { 
+      title: dailyChall.type === 'video' ? 'Watch a Video' : 'Read a Note', 
+      type: dailyChall.type, 
+      target: dailyChall.target, 
+      current: dailyChall.current || 0, 
+      rewardXp: dailyChall.rewardXp, 
+      claimed: dailyChall.claimed 
+    }
+  ];
+
+  const dailyHtml = dailyTasks.map(t => {
     const isDone = t.current >= t.target;
     return `
       <li class="challenge-item p-sm rounded border flex-row align-center justify-between" style="background:var(--surface-color); padding: 8px 12px; margin-bottom: 8px; border-radius: var(--radius-md); display:flex; align-items:center; justify-content:space-between;">
