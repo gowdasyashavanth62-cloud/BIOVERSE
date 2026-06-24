@@ -376,7 +376,7 @@ export function render(params) {
   }
 
   if (form) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorBox.classList.remove('show');
 
@@ -414,8 +414,8 @@ export function render(params) {
       submitBtn.innerHTML = '<i data-lucide="loader-2" style="width:18px;height:18px;animation:spin 1s linear infinite"></i> Creating account...';
       if (typeof lucide !== 'undefined') lucide.createIcons();
 
-      setTimeout(() => {
-        const result = Store.signup({ name, email, phone, password, class: cls });
+      try {
+        const result = await Store.signup({ name, email, phone, password, class: cls });
         if (result && result.error) {
           showError(result.error);
           submitBtn.disabled = false;
@@ -435,7 +435,12 @@ export function render(params) {
         } else {
           navigateTo('/dashboard');
         }
-      }, 600);
+      } catch (err) {
+        showError(err.message || 'An error occurred during signup.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i data-lucide="user-plus" style="width:18px;height:18px"></i> Create Account';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
     });
   }
 }

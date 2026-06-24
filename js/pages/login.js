@@ -323,7 +323,7 @@ export function render(params) {
   const errorText = document.getElementById('loginErrorText');
 
   if (form) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorBox.classList.remove('show');
 
@@ -343,8 +343,8 @@ export function render(params) {
       loginBtn.innerHTML = '<i data-lucide="loader-2" style="width:18px;height:18px;animation:spin 1s linear infinite"></i> Signing in...';
       if (typeof lucide !== 'undefined') lucide.createIcons();
 
-      setTimeout(() => {
-        const user = Store.login(email, password);
+      try {
+        const user = await Store.login(email, password);
         if (!user || user.error) {
           errorText.textContent = user?.error || 'Invalid email or password. Please try again.';
           errorBox.classList.add('show');
@@ -354,7 +354,13 @@ export function render(params) {
         } else {
           navigateTo('/dashboard');
         }
-      }, 500);
+      } catch (err) {
+        errorText.textContent = err.message || 'An error occurred during sign in.';
+        errorBox.classList.add('show');
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i data-lucide="log-in" style="width:18px;height:18px"></i> Sign In';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
     });
   }
 }
