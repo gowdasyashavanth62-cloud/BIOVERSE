@@ -270,7 +270,16 @@ export function initNavbar() {
 // ── Private DOM helpers ────────────────────────────────────────────────────
 
 function _toggleMobileMenu() {
-  const menu = document.getElementById('navbar-menu');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  
+  if (sidebar && window.innerWidth <= 1024) {
+    sidebar.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('show');
+    return;
+  }
+
+  const menu = document.getElementById('publicMenu') || document.getElementById('navbar-menu');
   const btn = document.querySelector('.navbar-hamburger');
   if (!menu) return;
   const isOpen = menu.classList.toggle('navbar-menu-open');
@@ -278,7 +287,7 @@ function _toggleMobileMenu() {
 }
 
 function _closeMobileMenu() {
-  const menu = document.getElementById('navbar-menu');
+  const menu = document.getElementById('publicMenu') || document.getElementById('navbar-menu');
   const btn = document.querySelector('.navbar-hamburger');
   if (menu) menu.classList.remove('navbar-menu-open');
   if (btn) btn.setAttribute('aria-expanded', 'false');

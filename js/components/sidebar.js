@@ -187,10 +187,10 @@ function _toggleSidebar() {
 
   const isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
 
-  // On mobile the class 'sidebar-mobile-open' controls visibility
-  if (window.innerWidth <= 768) {
-    sidebar.classList.toggle('sidebar-mobile-open');
-    if (overlay) overlay.classList.toggle('sidebar-overlay-visible');
+  // On mobile the class 'open' controls visibility
+  if (window.innerWidth <= 1024) {
+    sidebar.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('show');
   }
 
   // Persist collapsed state
@@ -204,8 +204,8 @@ function _closeSidebar() {
   const overlay = document.getElementById('sidebar-overlay');
   if (!sidebar) return;
 
-  sidebar.classList.remove('sidebar-mobile-open');
-  if (overlay) overlay.classList.remove('sidebar-overlay-visible');
+  sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('show');
 }
 
 /**
